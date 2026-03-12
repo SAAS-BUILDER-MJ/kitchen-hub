@@ -12,6 +12,12 @@ const LoginPage = () => {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
 
+  useEffect(() => {
+    if (auth.isAuthenticated) {
+      navigate(auth.role === 'chef' ? '/kitchen' : '/admin');
+    }
+  }, [auth, navigate]);
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     const ok = login(username, password);

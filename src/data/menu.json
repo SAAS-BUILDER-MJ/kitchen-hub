@@ -1,0 +1,106 @@
+[
+  {
+    "id": 1,
+    "name": "Cappuccino",
+    "price": 150,
+    "category": "Coffee",
+    "description": "Rich espresso with creamy steamed milk",
+    "image": "☕"
+  },
+  {
+    "id": 2,
+    "name": "Latte",
+    "price": 180,
+    "category": "Coffee",
+    "description": "Smooth espresso with velvety milk foam",
+    "image": "☕"
+  },
+  {
+    "id": 3,
+    "name": "Espresso",
+    "price": 120,
+    "category": "Coffee",
+    "description": "Bold and intense single shot espresso",
+    "image": "☕"
+  },
+  {
+    "id": 4,
+    "name": "Veg Sandwich",
+    "price": 200,
+    "category": "Breakfast",
+    "description": "Grilled vegetable sandwich with herbs",
+    "image": "🥪"
+  },
+  {
+    "id": 5,
+    "name": "Pancakes",
+    "price": 250,
+    "category": "Breakfast",
+    "description": "Fluffy pancakes with maple syrup and berries",
+    "image": "🥞"
+  },
+  {
+    "id": 6,
+    "name": "Eggs Benedict",
+    "price": 300,
+    "category": "Breakfast",
+    "description": "Poached eggs on English muffin with hollandaise",
+    "image": "🍳"
+  },
+  {
+    "id": 7,
+    "name": "Fresh Orange Juice",
+    "price": 130,
+    "category": "Beverages",
+    "description": "Freshly squeezed orange juice",
+    "image": "🍊"
+  },
+  {
+    "id": 8,
+    "name": "Iced Tea",
+    "price": 100,
+    "category": "Beverages",
+    "description": "Chilled lemon iced tea",
+    "image": "🧊"
+  },
+  {
+    "id": 9,
+    "name": "Margherita Pizza",
+    "price": 350,
+    "category": "Main Course",
+    "description": "Classic pizza with fresh mozzarella and basil",
+    "image": "🍕"
+  },
+  {
+    "id": 10,
+    "name": "Pasta Alfredo",
+    "price": 320,
+    "category": "Main Course",
+    "description": "Creamy fettuccine alfredo with parmesan",
+    "image": "🍝"
+  },
+  {
+    "id": 11,
+    "name": "Caesar Salad",
+    "price": 220,
+    "category": "Main Course",
+    "description": "Crisp romaine with caesar dressing and croutons",
+    "image": "🥗"
+  },
+  {
+    "id": 12,
+    "name": "Chocolate Brownie",
+    "price": 180,
+    "category": "Desserts",
+    "description": "Warm chocolate brownie with vanilla ice cream",
+    "image": "🍫"
+  },
+  {
+    "id": 13,
+    "name": "Tiramisu",
+    "price": 250,
+    "category": "Desserts",
+    "description": "Classic Italian coffee-flavored dessert",
+    "image": "🍰"
+  }
+]

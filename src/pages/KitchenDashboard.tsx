@@ -1,8 +1,9 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useStore, OrderStatus } from '@/store/useStore';
-import { LogOut, ChefHat, Clock, CheckCircle2 } from 'lucide-react';
+import { LogOut, ChefHat, Clock, CheckCircle2, BellRing } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { toast } from 'sonner';
 
 const statusColors: Record<OrderStatus, string> = {
   NEW: 'bg-warning/10 text-warning border-warning/30',
@@ -17,8 +18,48 @@ const nextStatus: Record<OrderStatus, OrderStatus | null> = {
 };
 
 const KitchenDashboard = () => {
-  const { orders, updateOrderStatus, logout } = useStore();
+  const { orders, updateOrderStatus, logout, newOrderCount, resetNewOrderCount } = useStore();
   const [filter, setFilter] = useState<OrderStatus | 'ALL'>('ALL');
+  const prevOrderCount = useRef(orders.length);
+
+  // Notification when new orders arrive
+  useEffect(() => {
+    if (orders.length > prevOrderCount.current) {
+      const newOrders = orders.length - prevOrderCount.current;
+      toast.info(`🔔 ${newOrders} new order${newOrders > 1 ? 's' : ''} received!`, {
+        duration: 5000,
+      });
+      // Play notification sound
+      try {
+        const ctx = new AudioContext();
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.frequency.value = 800;
+        gain.gain.value = 0.3;
+        osc.start();
+        osc.stop(ctx.currentTime + 0.15);
+        setTimeout(() => {
+          const osc2 = ctx.createOscillator();
+          const gain2 = ctx.createGain();
+          osc2.connect(gain2);
+          gain2.connect(ctx.destination);
+          osc2.frequency.value = 1000;
+          gain2.gain.value = 0.3;
+          osc2.start();
+          osc2.stop(ctx.currentTime + 0.15);
+        }, 180);
+      } catch {
+        // Audio not available
+      }
+    }
+    prevOrderCount.current = orders.length;
+  }, [orders.length]);
+
+  useEffect(() => {
+    if (newOrderCount > 0) resetNewOrderCount();
+  }, [newOrderCount, resetNewOrderCount]);
 
   const filtered = filter === 'ALL' ? orders : orders.filter((o) => o.status === filter);
   const counts = {
@@ -34,6 +75,14 @@ const KitchenDashboard = () => {
           <div className="flex items-center gap-2">
             <ChefHat className="h-5 w-5 text-primary" />
             <h1 className="text-xl font-bold">Kitchen Dashboard</h1>
+            {counts.NEW > 0 && (
+              <span className="relative flex h-5 w-5">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-destructive opacity-75" />
+                <span className="relative inline-flex rounded-full h-5 w-5 bg-destructive text-destructive-foreground items-center justify-center text-xs font-bold">
+                  {counts.NEW}
+                </span>
+              </span>
+            )}
           </div>
           <Button variant="ghost" size="sm" onClick={logout}>
             <LogOut className="h-4 w-4 mr-1" /> Logout
@@ -66,11 +115,17 @@ const KitchenDashboard = () => {
           </div>
         )}
         {filtered.map((order) => (
-          <div key={order.orderId} className="bg-card rounded-lg border p-4 animate-slide-up">
+          <div
+            key={order.orderId}
+            className={`bg-card rounded-lg border p-4 animate-slide-up ${
+              order.status === 'NEW' ? 'border-warning/50 shadow-md' : ''
+            }`}
+          >
             <div className="flex items-center justify-between mb-3">
-              <div>
+              <div className="flex items-center gap-2">
+                {order.status === 'NEW' && <BellRing className="h-4 w-4 text-warning animate-bounce" />}
                 <span className="font-bold">Order #{order.orderId}</span>
-                <span className="text-muted-foreground text-sm ml-2">· Table {order.tableNumber}</span>
+                <span className="text-muted-foreground text-sm">· Table {order.tableNumber}</span>
               </div>
               <Badge variant="outline" className={statusColors[order.status]}>
                 {order.status}

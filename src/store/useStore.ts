@@ -33,6 +33,9 @@ interface AuthState {
 interface AppStore {
   // Menu
   menu: MenuItem[];
+  addMenuItem: (item: Omit<MenuItem, 'id'>) => void;
+  updateMenuItem: (id: number, updates: Partial<MenuItem>) => void;
+  deleteMenuItem: (id: number) => void;
 
   // Cart
   cart: CartItem[];
@@ -53,12 +56,30 @@ interface AppStore {
   auth: AuthState;
   login: (username: string, password: string) => boolean;
   logout: () => void;
+
+  // Notifications
+  newOrderCount: number;
+  resetNewOrderCount: () => void;
 }
 
 let nextOrderId = 101;
 
 export const useStore = create<AppStore>((set, get) => ({
   menu: menuData as MenuItem[],
+
+  addMenuItem: (item) =>
+    set((state) => {
+      const maxId = state.menu.reduce((max, m) => Math.max(max, m.id), 0);
+      return { menu: [...state.menu, { ...item, id: maxId + 1 }] };
+    }),
+
+  updateMenuItem: (id, updates) =>
+    set((state) => ({
+      menu: state.menu.map((m) => (m.id === id ? { ...m, ...updates } : m)),
+    })),
+
+  deleteMenuItem: (id) =>
+    set((state) => ({ menu: state.menu.filter((m) => m.id !== id) })),
 
   cart: [],
   tableNumber: 1,
@@ -104,7 +125,11 @@ export const useStore = create<AppStore>((set, get) => ({
       total: cart.reduce((sum, c) => sum + c.price * c.quantity, 0),
       createdAt: new Date().toISOString(),
     };
-    set((state) => ({ orders: [...state.orders, order], cart: [] }));
+    set((state) => ({
+      orders: [...state.orders, order],
+      cart: [],
+      newOrderCount: state.newOrderCount + 1,
+    }));
     return order;
   },
 
@@ -132,4 +157,7 @@ export const useStore = create<AppStore>((set, get) => ({
   },
 
   logout: () => set({ auth: { role: null, isAuthenticated: false } }),
+
+  newOrderCount: 0,
+  resetNewOrderCount: () => set({ newOrderCount: 0 }),
 }));

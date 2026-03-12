@@ -6,7 +6,8 @@ import { Input } from '@/components/ui/input';
 import { Lock } from 'lucide-react';
 
 const LoginPage = () => {
-  const { login } = useStore();
+  const { login, auth } = useStore();
+  const navigate = useNavigate();
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');

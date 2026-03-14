@@ -8,13 +8,14 @@ export interface MenuItem {
   category: string;
   description: string;
   image: string;
+  available: boolean;
 }
 
 export interface CartItem extends MenuItem {
   quantity: number;
 }
 
-export type OrderStatus = 'NEW' | 'PREPARING' | 'READY';
+export type OrderStatus = 'NEW' | 'PREPARING' | 'READY' | 'SERVED';
 
 export interface Order {
   orderId: number;
@@ -23,6 +24,7 @@ export interface Order {
   status: OrderStatus;
   total: number;
   createdAt: string;
+  updatedAt: string;
 }
 
 interface AuthState {
@@ -36,6 +38,7 @@ interface AppStore {
   addMenuItem: (item: Omit<MenuItem, 'id'>) => void;
   updateMenuItem: (id: number, updates: Partial<MenuItem>) => void;
   deleteMenuItem: (id: number) => void;
+  toggleAvailability: (id: number) => void;
 
   // Cart
   cart: CartItem[];
@@ -65,7 +68,7 @@ interface AppStore {
 let nextOrderId = 101;
 
 export const useStore = create<AppStore>((set, get) => ({
-  menu: menuData as MenuItem[],
+  menu: (menuData as Omit<MenuItem, 'available'>[]).map((item) => ({ ...item, available: true })),
 
   addMenuItem: (item) =>
     set((state) => {
@@ -80,6 +83,13 @@ export const useStore = create<AppStore>((set, get) => ({
 
   deleteMenuItem: (id) =>
     set((state) => ({ menu: state.menu.filter((m) => m.id !== id) })),
+
+  toggleAvailability: (id) =>
+    set((state) => ({
+      menu: state.menu.map((m) =>
+        m.id === id ? { ...m, available: !m.available } : m
+      ),
+    })),
 
   cart: [],
   tableNumber: 1,
@@ -117,13 +127,15 @@ export const useStore = create<AppStore>((set, get) => ({
   placeOrder: () => {
     const { cart, tableNumber } = get();
     if (cart.length === 0) return null;
+    const now = new Date().toISOString();
     const order: Order = {
       orderId: nextOrderId++,
       tableNumber,
       items: cart.map((c) => ({ name: c.name, quantity: c.quantity, price: c.price })),
       status: 'NEW',
       total: cart.reduce((sum, c) => sum + c.price * c.quantity, 0),
-      createdAt: new Date().toISOString(),
+      createdAt: now,
+      updatedAt: now,
     };
     set((state) => ({
       orders: [...state.orders, order],
@@ -136,7 +148,7 @@ export const useStore = create<AppStore>((set, get) => ({
   updateOrderStatus: (orderId, status) =>
     set((state) => ({
       orders: state.orders.map((o) =>
-        o.orderId === orderId ? { ...o, status } : o
+        o.orderId === orderId ? { ...o, status, updatedAt: new Date().toISOString() } : o
       ),
     })),
 

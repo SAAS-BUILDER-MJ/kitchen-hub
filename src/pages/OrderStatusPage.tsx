@@ -1,6 +1,6 @@
 import { useParams, useNavigate } from 'react-router-dom';
 import { useStore, OrderStatus } from '@/store/useStore';
-import { ArrowLeft, Clock, ChefHat, CheckCircle2 } from 'lucide-react';
+import { ArrowLeft, Clock, ChefHat, CheckCircle2, UtensilsCrossed } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 const statusConfig: Record<OrderStatus, { icon: React.ReactNode; label: string; color: string; description: string }> = {
@@ -22,9 +22,15 @@ const statusConfig: Record<OrderStatus, { icon: React.ReactNode; label: string; 
     color: 'text-accent bg-accent/10',
     description: 'Your order is ready for pickup!',
   },
+  SERVED: {
+    icon: <UtensilsCrossed className="h-6 w-6" />,
+    label: 'Served',
+    color: 'text-success bg-success/10',
+    description: 'Your order has been served. Enjoy your meal!',
+  },
 };
 
-const steps: OrderStatus[] = ['NEW', 'PREPARING', 'READY'];
+const steps: OrderStatus[] = ['NEW', 'PREPARING', 'READY', 'SERVED'];
 
 const OrderStatusPage = () => {
   const { orderId } = useParams();
@@ -76,16 +82,31 @@ const OrderStatusPage = () => {
                   {i + 1}
                 </div>
                 {i < steps.length - 1 && (
-                  <div className={`w-12 sm:w-20 h-1 ${i < currentStep ? 'bg-primary' : 'bg-secondary'}`} />
+                  <div className={`w-8 sm:w-16 h-1 ${i < currentStep ? 'bg-primary' : 'bg-secondary'}`} />
                 )}
               </div>
             );
           })}
         </div>
 
+        {/* Step Labels */}
+        <div className="flex justify-between mb-8 px-2">
+          {steps.map((step, i) => (
+            <span key={step} className={`text-[10px] sm:text-xs text-center ${
+              i <= currentStep ? 'text-primary font-medium' : 'text-muted-foreground'
+            }`}>
+              {step}
+            </span>
+          ))}
+        </div>
+
         {/* Order Details */}
         <div className="bg-card rounded-lg border p-4 space-y-2">
           <h3 className="font-semibold text-sm text-muted-foreground mb-2">Order Details</h3>
+          <div className="text-sm text-muted-foreground flex justify-between">
+            <span>Table</span>
+            <span className="font-medium text-foreground">{order.tableNumber}</span>
+          </div>
           {order.items.map((item, i) => (
             <div key={i} className="flex justify-between text-sm">
               <span>{item.name} × {item.quantity}</span>

@@ -1,98 +1,55 @@
 import { create } from 'zustand';
-import menuData from '@/data/menu.json';
-
-export interface MenuItem {
-  id: number;
-  name: string;
-  price: number;
-  category: string;
-  description: string;
-  image: string;
-  available: boolean;
-}
-
-export interface CartItem extends MenuItem {
-  quantity: number;
-}
+import { supabase } from '@/integrations/supabase/client';
 
 export type OrderStatus = 'NEW' | 'PREPARING' | 'READY' | 'SERVED';
 
-export interface Order {
-  orderId: number;
-  tableNumber: number;
-  items: { name: string; quantity: number; price: number }[];
-  status: OrderStatus;
-  total: number;
-  createdAt: string;
-  updatedAt: string;
+export interface CartItem {
+  id: string;
+  menu_item_id: string;
+  name: string;
+  price: number;
+  emoji: string;
+  quantity: number;
 }
 
 interface AuthState {
-  role: 'customer' | 'chef' | 'admin' | null;
+  role: 'chef' | 'admin' | null;
   isAuthenticated: boolean;
+  userId: string | null;
 }
 
 interface AppStore {
-  // Menu
-  menu: MenuItem[];
-  addMenuItem: (item: Omit<MenuItem, 'id'>) => void;
-  updateMenuItem: (id: number, updates: Partial<MenuItem>) => void;
-  deleteMenuItem: (id: number) => void;
-  toggleAvailability: (id: number) => void;
-
-  // Cart
+  // Cart (client-side only)
   cart: CartItem[];
   tableNumber: number;
-  addToCart: (item: MenuItem) => void;
-  removeFromCart: (itemId: number) => void;
-  updateQuantity: (itemId: number, quantity: number) => void;
+  tableId: string | null;
+  restaurantId: string;
+  addToCart: (item: { id: string; name: string; price: number; emoji: string | null }) => void;
+  removeFromCart: (itemId: string) => void;
+  updateQuantity: (itemId: string, quantity: number) => void;
   clearCart: () => void;
   setTableNumber: (table: number) => void;
-
-  // Orders
-  orders: Order[];
-  placeOrder: () => Order | null;
-  updateOrderStatus: (orderId: number, status: OrderStatus) => void;
-  getOrdersByTable: (table: number) => Order[];
+  setTableId: (id: string) => void;
 
   // Auth
   auth: AuthState;
-  login: (username: string, password: string) => boolean;
-  logout: () => void;
+  login: (email: string, password: string) => Promise<boolean>;
+  logout: () => Promise<void>;
+  checkAuth: () => Promise<void>;
 
   // Notifications
   newOrderCount: number;
+  incrementNewOrderCount: () => void;
   resetNewOrderCount: () => void;
 }
 
-let nextOrderId = 101;
+const DEMO_RESTAURANT_ID = 'a0000000-0000-0000-0000-000000000001';
 
 export const useStore = create<AppStore>((set, get) => ({
-  menu: (menuData as Omit<MenuItem, 'available'>[]).map((item) => ({ ...item, available: true })),
-
-  addMenuItem: (item) =>
-    set((state) => {
-      const maxId = state.menu.reduce((max, m) => Math.max(max, m.id), 0);
-      return { menu: [...state.menu, { ...item, id: maxId + 1 }] };
-    }),
-
-  updateMenuItem: (id, updates) =>
-    set((state) => ({
-      menu: state.menu.map((m) => (m.id === id ? { ...m, ...updates } : m)),
-    })),
-
-  deleteMenuItem: (id) =>
-    set((state) => ({ menu: state.menu.filter((m) => m.id !== id) })),
-
-  toggleAvailability: (id) =>
-    set((state) => ({
-      menu: state.menu.map((m) =>
-        m.id === id ? { ...m, available: !m.available } : m
-      ),
-    })),
-
   cart: [],
   tableNumber: 1,
+  tableId: null,
+  restaurantId: DEMO_RESTAURANT_ID,
 
   addToCart: (item) =>
     set((state) => {
@@ -104,7 +61,16 @@ export const useStore = create<AppStore>((set, get) => ({
           ),
         };
       }
-      return { cart: [...state.cart, { ...item, quantity: 1 }] };
+      return {
+        cart: [...state.cart, {
+          id: item.id,
+          menu_item_id: item.id,
+          name: item.name,
+          price: item.price,
+          emoji: item.emoji || '🍽️',
+          quantity: 1,
+        }],
+      };
     }),
 
   removeFromCart: (itemId) =>
@@ -119,57 +85,47 @@ export const useStore = create<AppStore>((set, get) => ({
     }),
 
   clearCart: () => set({ cart: [] }),
-
   setTableNumber: (table) => set({ tableNumber: table }),
+  setTableId: (id) => set({ tableId: id }),
 
-  orders: [],
+  auth: { role: null, isAuthenticated: false, userId: null },
 
-  placeOrder: () => {
-    const { cart, tableNumber } = get();
-    if (cart.length === 0) return null;
-    const now = new Date().toISOString();
-    const order: Order = {
-      orderId: nextOrderId++,
-      tableNumber,
-      items: cart.map((c) => ({ name: c.name, quantity: c.quantity, price: c.price })),
-      status: 'NEW',
-      total: cart.reduce((sum, c) => sum + c.price * c.quantity, 0),
-      createdAt: now,
-      updatedAt: now,
-    };
-    set((state) => ({
-      orders: [...state.orders, order],
-      cart: [],
-      newOrderCount: state.newOrderCount + 1,
-    }));
-    return order;
+  login: async (email, password) => {
+    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+    if (error || !data.user) return false;
+
+    // Check role from user_roles table
+    const { data: roles } = await supabase
+      .from('user_roles')
+      .select('role')
+      .eq('user_id', data.user.id);
+
+    const role = roles?.[0]?.role as 'chef' | 'admin' | null;
+    set({ auth: { role, isAuthenticated: true, userId: data.user.id } });
+    return true;
   },
 
-  updateOrderStatus: (orderId, status) =>
-    set((state) => ({
-      orders: state.orders.map((o) =>
-        o.orderId === orderId ? { ...o, status, updatedAt: new Date().toISOString() } : o
-      ),
-    })),
-
-  getOrdersByTable: (table) => get().orders.filter((o) => o.tableNumber === table),
-
-  auth: { role: null, isAuthenticated: false },
-
-  login: (username, password) => {
-    if (username === 'chef' && password === 'chef123') {
-      set({ auth: { role: 'chef', isAuthenticated: true } });
-      return true;
-    }
-    if (username === 'admin' && password === 'admin123') {
-      set({ auth: { role: 'admin', isAuthenticated: true } });
-      return true;
-    }
-    return false;
+  logout: async () => {
+    await supabase.auth.signOut();
+    set({ auth: { role: null, isAuthenticated: false, userId: null } });
   },
 
-  logout: () => set({ auth: { role: null, isAuthenticated: false } }),
+  checkAuth: async () => {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session?.user) {
+      set({ auth: { role: null, isAuthenticated: false, userId: null } });
+      return;
+    }
+    const { data: roles } = await supabase
+      .from('user_roles')
+      .select('role')
+      .eq('user_id', session.user.id);
+
+    const role = roles?.[0]?.role as 'chef' | 'admin' | null;
+    set({ auth: { role, isAuthenticated: true, userId: session.user.id } });
+  },
 
   newOrderCount: 0,
+  incrementNewOrderCount: () => set((state) => ({ newOrderCount: state.newOrderCount + 1 })),
   resetNewOrderCount: () => set({ newOrderCount: 0 }),
 }));

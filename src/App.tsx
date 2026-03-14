@@ -4,6 +4,7 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { useStore } from "@/store/useStore";
+import { useEffect } from "react";
 import Index from "./pages/Index";
 import MenuPage from "./pages/MenuPage";
 import CartPage from "./pages/CartPage";
@@ -31,24 +32,32 @@ const StaffRouter = () => {
   return <Navigate to="/" />;
 };
 
+const AuthInit = ({ children }: { children: React.ReactNode }) => {
+  const { checkAuth } = useStore();
+  useEffect(() => { checkAuth(); }, [checkAuth]);
+  return <>{children}</>;
+};
+
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
       <Toaster />
       <Sonner />
       <BrowserRouter>
-        <Routes>
-          <Route path="/" element={<Index />} />
-          <Route path="/menu" element={<MenuPage />} />
-          <Route path="/cart" element={<CartPage />} />
-          <Route path="/order-confirmation/:orderId" element={<OrderConfirmation />} />
-          <Route path="/order-status/:orderId" element={<OrderStatusPage />} />
-          <Route path="/login" element={<LoginPage />} />
-          <Route path="/kitchen" element={<ProtectedRoute role="chef"><KitchenDashboard /></ProtectedRoute>} />
-          <Route path="/admin" element={<ProtectedRoute role="admin"><AdminDashboard /></ProtectedRoute>} />
-          <Route path="/dashboard" element={<StaffRouter />} />
-          <Route path="*" element={<NotFound />} />
-        </Routes>
+        <AuthInit>
+          <Routes>
+            <Route path="/" element={<Index />} />
+            <Route path="/menu" element={<MenuPage />} />
+            <Route path="/cart" element={<CartPage />} />
+            <Route path="/order-confirmation/:orderId" element={<OrderConfirmation />} />
+            <Route path="/order-status/:orderId" element={<OrderStatusPage />} />
+            <Route path="/login" element={<LoginPage />} />
+            <Route path="/kitchen" element={<ProtectedRoute role="chef"><KitchenDashboard /></ProtectedRoute>} />
+            <Route path="/admin" element={<ProtectedRoute role="admin"><AdminDashboard /></ProtectedRoute>} />
+            <Route path="/dashboard" element={<StaffRouter />} />
+            <Route path="*" element={<NotFound />} />
+          </Routes>
+        </AuthInit>
       </BrowserRouter>
     </TooltipProvider>
   </QueryClientProvider>

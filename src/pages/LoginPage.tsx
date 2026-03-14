@@ -1,16 +1,22 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useStore } from '@/store/useStore';
+import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Lock } from 'lucide-react';
 
 const LoginPage = () => {
-  const { login, auth } = useStore();
+  const { auth, checkAuth } = useStore();
   const navigate = useNavigate();
-  const [username, setUsername] = useState('');
+  const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    checkAuth();
+  }, [checkAuth]);
 
   useEffect(() => {
     if (auth.isAuthenticated) {
@@ -18,10 +24,38 @@ const LoginPage = () => {
     }
   }, [auth, navigate]);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const ok = login(username, password);
-    if (!ok) setError('Invalid credentials. Try chef/chef123 or admin/admin123');
+    setLoading(true);
+    setError('');
+
+    const { data, error: authError } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+    });
+
+    if (authError || !data.user) {
+      setError(authError?.message || 'Invalid credentials');
+      setLoading(false);
+      return;
+    }
+
+    // Check role
+    const { data: roles } = await supabase
+      .from('user_roles')
+      .select('role')
+      .eq('user_id', data.user.id);
+
+    const role = roles?.[0]?.role as 'chef' | 'admin' | null;
+    if (!role) {
+      setError('No staff role assigned to this account');
+      await supabase.auth.signOut();
+      setLoading(false);
+      return;
+    }
+
+    await checkAuth();
+    setLoading(false);
   };
 
   return (
@@ -37,9 +71,10 @@ const LoginPage = () => {
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <Input
-            placeholder="Username"
-            value={username}
-            onChange={(e) => setUsername(e.target.value)}
+            type="email"
+            placeholder="Email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
           />
           <Input
             type="password"
@@ -48,13 +83,14 @@ const LoginPage = () => {
             onChange={(e) => setPassword(e.target.value)}
           />
           {error && <p className="text-destructive text-sm text-center">{error}</p>}
-          <Button type="submit" className="w-full">Login</Button>
+          <Button type="submit" className="w-full" disabled={loading}>
+            {loading ? 'Signing in...' : 'Login'}
+          </Button>
         </form>
 
         <div className="mt-6 p-3 bg-muted rounded-lg text-xs text-muted-foreground space-y-1">
-          <p className="font-medium">Demo Credentials:</p>
-          <p>Chef: <code className="font-mono">chef / chef123</code></p>
-          <p>Admin: <code className="font-mono">admin / admin123</code></p>
+          <p className="font-medium">Staff accounts need to be created in Lovable Cloud → Users.</p>
+          <p>After creating a user, assign them a role (chef/admin) in the user_roles table.</p>
         </div>
       </div>
     </div>

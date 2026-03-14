@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { useStore, OrderStatus } from '@/store/useStore';
-import { LogOut, ChefHat, Clock, CheckCircle2, BellRing } from 'lucide-react';
+import { LogOut, ChefHat, Clock, CheckCircle2, BellRing, UtensilsCrossed } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
@@ -9,12 +9,14 @@ const statusColors: Record<OrderStatus, string> = {
   NEW: 'bg-warning/10 text-warning border-warning/30',
   PREPARING: 'bg-primary/10 text-primary border-primary/30',
   READY: 'bg-accent/10 text-accent border-accent/30',
+  SERVED: 'bg-success/10 text-success border-success/30',
 };
 
 const nextStatus: Record<OrderStatus, OrderStatus | null> = {
   NEW: 'PREPARING',
   PREPARING: 'READY',
-  READY: null,
+  READY: 'SERVED',
+  SERVED: null,
 };
 
 const KitchenDashboard = () => {
@@ -29,7 +31,6 @@ const KitchenDashboard = () => {
       toast.info(`🔔 ${newOrders} new order${newOrders > 1 ? 's' : ''} received!`, {
         duration: 5000,
       });
-      // Play notification sound
       try {
         const ctx = new AudioContext();
         const osc = ctx.createOscillator();
@@ -61,11 +62,24 @@ const KitchenDashboard = () => {
     if (newOrderCount > 0) resetNewOrderCount();
   }, [newOrderCount, resetNewOrderCount]);
 
-  const filtered = filter === 'ALL' ? orders : orders.filter((o) => o.status === filter);
-  const counts = {
+  const activeOrders = orders.filter((o) => o.status !== 'SERVED');
+  const servedOrders = orders.filter((o) => o.status === 'SERVED');
+  const displayed = filter === 'ALL' ? orders : orders.filter((o) => o.status === filter);
+
+  const counts: Record<string, number> = {
     NEW: orders.filter((o) => o.status === 'NEW').length,
     PREPARING: orders.filter((o) => o.status === 'PREPARING').length,
     READY: orders.filter((o) => o.status === 'READY').length,
+    SERVED: servedOrders.length,
+  };
+
+  const getActionButton = (status: OrderStatus) => {
+    switch (status) {
+      case 'NEW': return { label: 'Start Preparing', icon: <ChefHat className="h-4 w-4 mr-1" /> };
+      case 'PREPARING': return { label: 'Mark Ready', icon: <CheckCircle2 className="h-4 w-4 mr-1" /> };
+      case 'READY': return { label: 'Mark Served', icon: <UtensilsCrossed className="h-4 w-4 mr-1" /> };
+      default: return null;
+    }
   };
 
   return (
@@ -91,8 +105,8 @@ const KitchenDashboard = () => {
       </header>
 
       {/* Stats */}
-      <div className="max-w-4xl mx-auto px-4 py-4 grid grid-cols-3 gap-3">
-        {(['NEW', 'PREPARING', 'READY'] as OrderStatus[]).map((s) => (
+      <div className="max-w-4xl mx-auto px-4 py-4 grid grid-cols-4 gap-2 sm:gap-3">
+        {(['NEW', 'PREPARING', 'READY', 'SERVED'] as OrderStatus[]).map((s) => (
           <button
             key={s}
             onClick={() => setFilter(filter === s ? 'ALL' : s)}
@@ -101,65 +115,60 @@ const KitchenDashboard = () => {
             }`}
           >
             <div className="text-2xl font-bold">{counts[s]}</div>
-            <div className="text-xs font-medium">{s}</div>
+            <div className="text-[10px] sm:text-xs font-medium">{s}</div>
           </button>
         ))}
       </div>
 
       {/* Orders */}
       <div className="max-w-4xl mx-auto px-4 pb-8 space-y-3">
-        {filtered.length === 0 && (
+        {displayed.length === 0 && (
           <div className="text-center py-12 text-muted-foreground">
             <Clock className="h-8 w-8 mx-auto mb-2 opacity-50" />
             <p>No orders yet</p>
           </div>
         )}
-        {filtered.map((order) => (
-          <div
-            key={order.orderId}
-            className={`bg-card rounded-lg border p-4 animate-slide-up ${
-              order.status === 'NEW' ? 'border-warning/50 shadow-md' : ''
-            }`}
-          >
-            <div className="flex items-center justify-between mb-3">
-              <div className="flex items-center gap-2">
-                {order.status === 'NEW' && <BellRing className="h-4 w-4 text-warning animate-bounce" />}
-                <span className="font-bold">Order #{order.orderId}</span>
-                <span className="text-muted-foreground text-sm">· Table {order.tableNumber}</span>
-              </div>
-              <Badge variant="outline" className={statusColors[order.status]}>
-                {order.status}
-              </Badge>
-            </div>
-            <div className="space-y-1 mb-3">
-              {order.items.map((item, i) => (
-                <div key={i} className="text-sm flex justify-between">
-                  <span>{item.name} × {item.quantity}</span>
-                  <span className="text-muted-foreground">₹{item.price * item.quantity}</span>
+        {displayed.map((order) => {
+          const action = getActionButton(order.status);
+          return (
+            <div
+              key={order.orderId}
+              className={`bg-card rounded-lg border p-4 animate-slide-up ${
+                order.status === 'NEW' ? 'border-warning/50 shadow-md' : ''
+              }`}
+            >
+              <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center gap-2">
+                  {order.status === 'NEW' && <BellRing className="h-4 w-4 text-warning animate-bounce" />}
+                  <span className="font-bold">Order #{order.orderId}</span>
+                  <span className="text-muted-foreground text-sm">· Table {order.tableNumber}</span>
                 </div>
-              ))}
+                <Badge variant="outline" className={statusColors[order.status]}>
+                  {order.status}
+                </Badge>
+              </div>
+              <div className="space-y-1 mb-3">
+                {order.items.map((item, i) => (
+                  <div key={i} className="text-sm flex justify-between">
+                    <span>{item.name} × {item.quantity}</span>
+                    <span className="text-muted-foreground">₹{item.price * item.quantity}</span>
+                  </div>
+                ))}
+              </div>
+              <div className="flex items-center justify-between border-t pt-3">
+                <span className="font-bold text-sm">Total: ₹{order.total}</span>
+                {action && nextStatus[order.status] && (
+                  <Button
+                    size="sm"
+                    onClick={() => updateOrderStatus(order.orderId, nextStatus[order.status]!)}
+                  >
+                    {action.icon} {action.label}
+                  </Button>
+                )}
+              </div>
             </div>
-            <div className="flex items-center justify-between border-t pt-3">
-              <span className="font-bold text-sm">Total: ₹{order.total}</span>
-              {nextStatus[order.status] && (
-                <Button
-                  size="sm"
-                  onClick={() => updateOrderStatus(order.orderId, nextStatus[order.status]!)}
-                >
-                  {order.status === 'NEW' ? (
-                    <>
-                      <ChefHat className="h-4 w-4 mr-1" /> Start Preparing
-                    </>
-                  ) : (
-                    <>
-                      <CheckCircle2 className="h-4 w-4 mr-1" /> Mark Ready
-                    </>
-                  )}
-                </Button>
-              )}
-            </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
     </div>
   );

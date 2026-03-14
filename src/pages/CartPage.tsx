@@ -1,17 +1,38 @@
 import { useNavigate } from 'react-router-dom';
+import { useState } from 'react';
 import { useStore } from '@/store/useStore';
+import { placeOrder as placeOrderApi } from '@/lib/supabase-api';
 import { ArrowLeft, Minus, Plus, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { toast } from 'sonner';
 
 const CartPage = () => {
   const navigate = useNavigate();
-  const { cart, tableNumber, updateQuantity, removeFromCart, placeOrder } = useStore();
+  const { cart, tableNumber, tableId, restaurantId, updateQuantity, clearCart } = useStore();
+  const [placing, setPlacing] = useState(false);
 
   const total = cart.reduce((s, c) => s + c.price * c.quantity, 0);
 
-  const handlePlaceOrder = () => {
-    const order = placeOrder();
-    if (order) navigate(`/order-confirmation/${order.orderId}`);
+  const handlePlaceOrder = async () => {
+    if (!tableId) {
+      toast.error('Table not found. Please scan the QR code again.');
+      return;
+    }
+    setPlacing(true);
+    try {
+      const order = await placeOrderApi(
+        restaurantId,
+        tableId,
+        tableNumber,
+        cart.map((c) => ({ menu_item_id: c.menu_item_id, name: c.name, quantity: c.quantity, price: c.price }))
+      );
+      clearCart();
+      navigate(`/order-confirmation/${order.id}`);
+    } catch (err) {
+      toast.error('Failed to place order. Please try again.');
+    } finally {
+      setPlacing(false);
+    }
   };
 
   if (cart.length === 0) {
@@ -42,7 +63,7 @@ const CartPage = () => {
       <div className="max-w-2xl mx-auto px-4 py-4 space-y-3">
         {cart.map((item) => (
           <div key={item.id} className="flex items-center gap-3 p-4 bg-card rounded-lg border">
-            <span className="text-3xl">{item.image}</span>
+            <span className="text-3xl">{item.emoji}</span>
             <div className="flex-1 min-w-0">
               <h3 className="font-semibold text-sm">{item.name}</h3>
               <p className="text-sm font-bold text-primary">₹{item.price * item.quantity}</p>
@@ -66,15 +87,14 @@ const CartPage = () => {
         ))}
       </div>
 
-      {/* Order Summary */}
       <div className="fixed bottom-0 left-0 right-0 bg-background/90 backdrop-blur-md border-t p-4">
         <div className="max-w-2xl mx-auto space-y-3">
           <div className="flex justify-between text-sm">
             <span className="text-muted-foreground">Subtotal</span>
             <span className="font-semibold">₹{total}</span>
           </div>
-          <Button className="w-full py-6 text-base font-semibold" onClick={handlePlaceOrder}>
-            Place Order · ₹{total}
+          <Button className="w-full py-6 text-base font-semibold" onClick={handlePlaceOrder} disabled={placing}>
+            {placing ? 'Placing Order...' : `Place Order · ₹${total}`}
           </Button>
         </div>
       </div>

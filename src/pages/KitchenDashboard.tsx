@@ -1,7 +1,7 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useStore, OrderStatus } from '@/store/useStore';
 import { fetchOrders, updateOrderStatus, subscribeToOrders, DbOrder, DEMO_RESTAURANT_ID } from '@/lib/supabase-api';
-import { LogOut, ChefHat, Clock, CheckCircle2, BellRing, UtensilsCrossed } from 'lucide-react';
+import { LogOut, ChefHat, Clock, CheckCircle2, BellRing, UtensilsCrossed, Layers } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
@@ -20,10 +20,17 @@ const nextStatus: Record<OrderStatus, OrderStatus | null> = {
   SERVED: null,
 };
 
+interface DishGroup {
+  name: string;
+  totalQuantity: number;
+  orders: { orderId: string; tableNumber: number; quantity: number }[];
+}
+
 const KitchenDashboard = () => {
   const { logout } = useStore();
   const [orders, setOrders] = useState<DbOrder[]>([]);
   const [filter, setFilter] = useState<OrderStatus | 'ALL'>('ALL');
+  const [showDishGrouping, setShowDishGrouping] = useState(false);
   const prevOrderCount = useRef(0);
 
   const loadOrders = useCallback(async () => {
@@ -69,18 +76,58 @@ const KitchenDashboard = () => {
     try {
       await updateOrderStatus(orderId, status);
       setOrders((prev) => prev.map((o) => o.id === orderId ? { ...o, status } : o));
+      if (status === 'SERVED') {
+        toast.success('Order marked as served');
+      }
     } catch {
       toast.error('Failed to update order status');
     }
   };
 
-  const displayed = filter === 'ALL' ? orders : orders.filter((o) => o.status === filter);
+  // Filter out SERVED orders from kitchen view, sort oldest first (chronological)
+  const activeOrders = useMemo(() => 
+    orders
+      .filter((o) => o.status !== 'SERVED')
+      .sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()),
+    [orders]
+  );
+
+  const displayed = useMemo(() => 
+    filter === 'ALL' ? activeOrders : activeOrders.filter((o) => o.status === filter),
+    [activeOrders, filter]
+  );
+
   const counts: Record<string, number> = {
-    NEW: orders.filter((o) => o.status === 'NEW').length,
-    PREPARING: orders.filter((o) => o.status === 'PREPARING').length,
-    READY: orders.filter((o) => o.status === 'READY').length,
-    SERVED: orders.filter((o) => o.status === 'SERVED').length,
+    NEW: activeOrders.filter((o) => o.status === 'NEW').length,
+    PREPARING: activeOrders.filter((o) => o.status === 'PREPARING').length,
+    READY: activeOrders.filter((o) => o.status === 'READY').length,
   };
+
+  // Group common dishes across active (non-served) orders
+  const dishGroups = useMemo((): DishGroup[] => {
+    const groupMap = new Map<string, DishGroup>();
+    activeOrders
+      .filter((o) => o.status === 'NEW' || o.status === 'PREPARING')
+      .forEach((order) => {
+        order.items?.forEach((item) => {
+          const existing = groupMap.get(item.name);
+          if (existing) {
+            existing.totalQuantity += item.quantity;
+            existing.orders.push({ orderId: order.id, tableNumber: order.table_number, quantity: item.quantity });
+          } else {
+            groupMap.set(item.name, {
+              name: item.name,
+              totalQuantity: item.quantity,
+              orders: [{ orderId: order.id, tableNumber: order.table_number, quantity: item.quantity }],
+            });
+          }
+        });
+      });
+    // Only return dishes that appear in multiple orders
+    return Array.from(groupMap.values())
+      .filter((g) => g.orders.length > 1)
+      .sort((a, b) => b.totalQuantity - a.totalQuantity);
+  }, [activeOrders]);
 
   const getActionButton = (status: OrderStatus) => {
     switch (status) {
@@ -90,6 +137,9 @@ const KitchenDashboard = () => {
       default: return null;
     }
   };
+
+  // Check if a dish in an order is also in other active orders
+  const isDishCommon = (itemName: string) => dishGroups.some((g) => g.name === itemName);
 
   return (
     <div className="min-h-screen bg-background">
@@ -107,14 +157,30 @@ const KitchenDashboard = () => {
               </span>
             )}
           </div>
-          <Button variant="ghost" size="sm" onClick={() => logout()}>
-            <LogOut className="h-4 w-4 mr-1" /> Logout
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button
+              variant={showDishGrouping ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => setShowDishGrouping(!showDishGrouping)}
+              className="gap-1"
+            >
+              <Layers className="h-4 w-4" />
+              <span className="hidden sm:inline">Dish Groups</span>
+              {dishGroups.length > 0 && (
+                <Badge variant="secondary" className="ml-1 h-5 w-5 p-0 flex items-center justify-center text-[10px]">
+                  {dishGroups.length}
+                </Badge>
+              )}
+            </Button>
+            <Button variant="ghost" size="sm" onClick={() => logout()}>
+              <LogOut className="h-4 w-4 mr-1" /> Logout
+            </Button>
+          </div>
         </div>
       </header>
 
-      <div className="max-w-4xl mx-auto px-4 py-4 grid grid-cols-4 gap-2 sm:gap-3">
-        {(['NEW', 'PREPARING', 'READY', 'SERVED'] as OrderStatus[]).map((s) => (
+      <div className="max-w-4xl mx-auto px-4 py-4 grid grid-cols-3 gap-2 sm:gap-3">
+        {(['NEW', 'PREPARING', 'READY'] as OrderStatus[]).map((s) => (
           <button
             key={s}
             onClick={() => setFilter(filter === s ? 'ALL' : s)}
@@ -126,11 +192,51 @@ const KitchenDashboard = () => {
         ))}
       </div>
 
+      {/* Dish Grouping Panel */}
+      {showDishGrouping && dishGroups.length > 0 && (
+        <div className="max-w-4xl mx-auto px-4 pb-4">
+          <div className="bg-primary/5 border border-primary/20 rounded-lg p-4">
+            <h2 className="text-sm font-bold mb-3 flex items-center gap-2">
+              <Layers className="h-4 w-4 text-primary" />
+              Common Dishes Across Orders
+              <span className="text-xs text-muted-foreground font-normal">— prepare in bulk</span>
+            </h2>
+            <div className="space-y-2">
+              {dishGroups.map((group) => (
+                <div key={group.name} className="bg-card rounded-lg border p-3">
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="font-semibold text-sm">{group.name}</span>
+                    <Badge variant="default" className="bg-primary/90">
+                      Total: {group.totalQuantity}
+                    </Badge>
+                  </div>
+                  <div className="flex flex-wrap gap-1">
+                    {group.orders.map((o) => (
+                      <Badge key={o.orderId} variant="outline" className="text-xs">
+                        Table {o.tableNumber} × {o.quantity}
+                      </Badge>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showDishGrouping && dishGroups.length === 0 && (
+        <div className="max-w-4xl mx-auto px-4 pb-4">
+          <div className="bg-muted rounded-lg p-4 text-center text-sm text-muted-foreground">
+            No common dishes across current orders.
+          </div>
+        </div>
+      )}
+
       <div className="max-w-4xl mx-auto px-4 pb-8 space-y-3">
         {displayed.length === 0 && (
           <div className="text-center py-12 text-muted-foreground">
             <Clock className="h-8 w-8 mx-auto mb-2 opacity-50" />
-            <p>No orders yet</p>
+            <p>No active orders</p>
           </div>
         )}
         {displayed.map((order) => {
@@ -144,13 +250,21 @@ const KitchenDashboard = () => {
                 <div className="flex items-center gap-2">
                   {order.status === 'NEW' && <BellRing className="h-4 w-4 text-warning animate-bounce" />}
                   <span className="font-bold">Table {order.table_number}</span>
+                  <span className="text-xs text-muted-foreground">
+                    {new Date(order.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                  </span>
                 </div>
                 <Badge variant="outline" className={statusColors[order.status]}>{order.status}</Badge>
               </div>
               <div className="space-y-1 mb-3">
                 {order.items?.map((item) => (
-                  <div key={item.id} className="text-sm flex justify-between">
-                    <span>{item.name} × {item.quantity}</span>
+                  <div key={item.id} className={`text-sm flex justify-between items-center ${isDishCommon(item.name) ? 'bg-primary/5 rounded px-2 py-0.5 -mx-2' : ''}`}>
+                    <span className="flex items-center gap-1">
+                      {item.name} × {item.quantity}
+                      {isDishCommon(item.name) && (
+                        <Layers className="h-3 w-3 text-primary" />
+                      )}
+                    </span>
                     <span className="text-muted-foreground">₹{item.price * item.quantity}</span>
                   </div>
                 ))}

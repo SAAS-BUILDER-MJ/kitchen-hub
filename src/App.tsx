@@ -20,7 +20,7 @@ const queryClient = new QueryClient();
 const ProtectedRoute = ({ children, role }: { children: React.ReactNode; role: string }) => {
   const { auth } = useStore();
   if (!auth.isAuthenticated) return <Navigate to="/login" />;
-  if (auth.role !== role) return <Navigate to="/" />;
+  if (auth.role !== role) return <Navigate to="/login" />;
   return <>{children}</>;
 };
 
@@ -29,7 +29,7 @@ const StaffRouter = () => {
   if (!auth.isAuthenticated) return <Navigate to="/login" />;
   if (auth.role === 'chef') return <KitchenDashboard />;
   if (auth.role === 'admin') return <AdminDashboard />;
-  return <Navigate to="/" />;
+  return <Navigate to="/login" />;
 };
 
 const AuthInit = ({ children }: { children: React.ReactNode }) => {

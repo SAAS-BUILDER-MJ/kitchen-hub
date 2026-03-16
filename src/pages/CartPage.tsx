@@ -2,6 +2,7 @@ import { useNavigate } from 'react-router-dom';
 import { useState } from 'react';
 import { useStore } from '@/store/useStore';
 import { placeOrder as placeOrderApi } from '@/lib/supabase-api';
+import { saveOrderForTracking } from '@/components/customer/OrderTracker';
 import { ArrowLeft, Minus, Plus, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
@@ -26,6 +27,7 @@ const CartPage = () => {
         tableNumber,
         cart.map((c) => ({ menu_item_id: c.menu_item_id, name: c.name, quantity: c.quantity, price: c.price }))
       );
+      saveOrderForTracking(order.id);
       clearCart();
       navigate(`/order-confirmation/${order.id}`);
     } catch (err) {

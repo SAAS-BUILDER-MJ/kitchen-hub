@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import { format, getHours } from 'date-fns';
+import { getHours } from 'date-fns';
 import { TrendingUp, ShoppingBag, Users } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
@@ -21,16 +21,19 @@ interface Props {
 }
 
 export default function AdminOverviewTab({ orders, menuItemsCount, categoriesCount, availableCount }: Props) {
-  const totalRevenue = orders.reduce((sum, o) => sum + Number(o.total_price), 0);
+  // Revenue only counts SERVED orders
+  const servedOrders = orders.filter((o) => o.status === 'SERVED');
+  const totalRevenue = servedOrders.reduce((sum, o) => sum + Number(o.total_price), 0);
   const totalOrders = orders.length;
-  const avgOrderValue = totalOrders > 0 ? Math.round(totalRevenue / totalOrders) : 0;
-  const uniqueTables = new Set(orders.map((o) => o.table_number)).size;
+  const servedCount = servedOrders.length;
+  const avgOrderValue = servedCount > 0 ? Math.round(totalRevenue / servedCount) : 0;
+  const uniqueTables = new Set(servedOrders.map((o) => o.table_number)).size;
 
   const statusCounts: Record<string, number> = {
     NEW: orders.filter((o) => o.status === 'NEW').length,
     PREPARING: orders.filter((o) => o.status === 'PREPARING').length,
     READY: orders.filter((o) => o.status === 'READY').length,
-    SERVED: orders.filter((o) => o.status === 'SERVED').length,
+    SERVED: servedCount,
   };
 
   const itemCounts: Record<string, number> = {};
@@ -41,9 +44,10 @@ export default function AdminOverviewTab({ orders, menuItemsCount, categoriesCou
   );
   const popularItems = Object.entries(itemCounts).sort(([, a], [, b]) => b - a).slice(0, 5);
 
+  // Revenue chart also only counts SERVED orders
   const hourlyData = useMemo(() => {
     const buckets: Record<number, number> = {};
-    orders.forEach((o) => {
+    servedOrders.forEach((o) => {
       const h = getHours(new Date(o.created_at));
       buckets[h] = (buckets[h] || 0) + Number(o.total_price);
     });
@@ -56,15 +60,15 @@ export default function AdminOverviewTab({ orders, menuItemsCount, categoriesCou
       result.push({ hour: `${h}:00`, revenue: buckets[h] || 0 });
     }
     return result;
-  }, [orders]);
+  }, [servedOrders]);
 
   return (
     <div className="space-y-6">
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        <StatCard icon={<TrendingUp className="h-5 w-5 text-primary" />} label="Revenue" value={`₹${totalRevenue}`} />
-        <StatCard icon={<ShoppingBag className="h-5 w-5 text-accent" />} label="Orders" value={String(totalOrders)} />
+        <StatCard icon={<TrendingUp className="h-5 w-5 text-primary" />} label="Revenue (Served)" value={`₹${totalRevenue}`} />
+        <StatCard icon={<ShoppingBag className="h-5 w-5 text-accent" />} label="Total Orders" value={String(totalOrders)} />
         <StatCard icon={<Users className="h-5 w-5 text-warning" />} label="Tables Served" value={String(uniqueTables)} />
-        <StatCard icon={<TrendingUp className="h-5 w-5 text-success" />} label="Avg. Order" value={`₹${avgOrderValue}`} />
+        <StatCard icon={<TrendingUp className="h-5 w-5 text-success" />} label="Avg. Order (Served)" value={`₹${avgOrderValue}`} />
       </div>
 
       <div className="bg-card rounded-lg border p-4">
@@ -81,7 +85,7 @@ export default function AdminOverviewTab({ orders, menuItemsCount, categoriesCou
 
       {hourlyData.length > 0 && (
         <div className="bg-card rounded-lg border p-4">
-          <h2 className="font-bold text-sm mb-3">Revenue by Hour</h2>
+          <h2 className="font-bold text-sm mb-3">Revenue by Hour (Served Only)</h2>
           <div className="h-48">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={hourlyData}>

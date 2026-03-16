@@ -6,6 +6,7 @@ import { ShoppingCart, Plus, Minus, Search, X } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import OrderTracker from '@/components/customer/OrderTracker';
 
 const MenuPage = () => {
   const [searchParams] = useSearchParams();
@@ -123,6 +124,8 @@ const MenuPage = () => {
           />
         ))}
       </div>
+
+      <OrderTracker tableNumber={tableNumber} />
 
       {cartCount > 0 && (
         <div className="fixed bottom-0 left-0 right-0 p-4 bg-background/90 backdrop-blur-md border-t animate-slide-up">

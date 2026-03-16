@@ -14,6 +14,7 @@ import KitchenDashboard from "./pages/KitchenDashboard";
 import AdminDashboard from "./pages/AdminDashboard";
 import LoginPage from "./pages/LoginPage";
 import NotFound from "./pages/NotFound";
+import PRDDownload from "./pages/PRDDownload";
 
 const queryClient = new QueryClient();
 

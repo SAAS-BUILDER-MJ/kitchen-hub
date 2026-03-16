@@ -27,6 +27,7 @@ const CartPage = () => {
         tableNumber,
         cart.map((c) => ({ menu_item_id: c.menu_item_id, name: c.name, quantity: c.quantity, price: c.price }))
       );
+      saveOrderForTracking(order.id);
       clearCart();
       navigate(`/order-confirmation/${order.id}`);
     } catch (err) {

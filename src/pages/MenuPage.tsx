@@ -125,6 +125,8 @@ const MenuPage = () => {
         ))}
       </div>
 
+      <OrderTracker tableNumber={tableNumber} />
+
       {cartCount > 0 && (
         <div className="fixed bottom-0 left-0 right-0 p-4 bg-background/90 backdrop-blur-md border-t animate-slide-up">
           <div className="max-w-2xl mx-auto">

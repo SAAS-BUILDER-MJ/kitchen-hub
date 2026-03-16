@@ -2,6 +2,7 @@ import { useNavigate } from 'react-router-dom';
 import { useState } from 'react';
 import { useStore } from '@/store/useStore';
 import { placeOrder as placeOrderApi } from '@/lib/supabase-api';
+import { saveOrderForTracking } from '@/components/customer/OrderTracker';
 import { ArrowLeft, Minus, Plus, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';

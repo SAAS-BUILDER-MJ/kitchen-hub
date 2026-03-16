@@ -55,6 +55,7 @@ const App = () => (
             <Route path="/login" element={<LoginPage />} />
             <Route path="/kitchen" element={<ProtectedRoute role="chef"><KitchenDashboard /></ProtectedRoute>} />
             <Route path="/admin" element={<ProtectedRoute role="admin"><AdminDashboard /></ProtectedRoute>} />
+            <Route path="/prd" element={<PRDDownload />} />
             <Route path="/dashboard" element={<StaffRouter />} />
             <Route path="*" element={<NotFound />} />
           </Routes>

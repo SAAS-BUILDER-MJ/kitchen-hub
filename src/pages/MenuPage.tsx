@@ -6,6 +6,7 @@ import { ShoppingCart, Plus, Minus, Search, X } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import OrderTracker from '@/components/customer/OrderTracker';
 
 const MenuPage = () => {
   const [searchParams] = useSearchParams();

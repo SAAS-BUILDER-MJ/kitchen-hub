@@ -7,14 +7,15 @@ import { Input } from '@/components/ui/input';
 import { OrderStatus } from '@/store/useStore';
 import { DbOrder } from '@/lib/supabase-api';
 
-const statusColors: Record<OrderStatus, string> = {
+const statusColors: Record<string, string> = {
   NEW: 'bg-warning/10 text-warning border-warning/30',
   PREPARING: 'bg-primary/10 text-primary border-primary/30',
   READY: 'bg-accent/10 text-accent border-accent/30',
   SERVED: 'bg-success/10 text-success border-success/30',
+  CANCELLED: 'bg-destructive/10 text-destructive border-destructive/30',
 };
 
-const statusOptions: (OrderStatus | 'ALL')[] = ['ALL', 'NEW', 'PREPARING', 'READY', 'SERVED'];
+const statusOptions: (OrderStatus | 'ALL')[] = ['ALL', 'NEW', 'PREPARING', 'READY', 'SERVED', 'CANCELLED'];
 
 interface Props {
   orders: DbOrder[];
@@ -48,13 +49,15 @@ export default function AdminOrdersTab({ orders }: Props) {
   }, [orders, statusFilter, search, sortNewestFirst]);
 
   const exportCSV = () => {
-    const headers = ['Order Time', 'Table', 'Status', 'Items', 'Total'];
+    const headers = ['Order Time', 'Table', 'Status', 'Items', 'Notes', 'Total', 'Cancel Reason'];
     const rows = filtered.map((o) => [
       format(new Date(o.created_at), 'yyyy-MM-dd HH:mm'),
       String(o.table_number),
       o.status,
       (o.items || []).map((i) => `${i.name} x${i.quantity}`).join('; '),
+      (o.items || []).filter((i) => i.notes).map((i) => `${i.name}: ${i.notes}`).join('; '),
       String(o.total_price),
+      o.cancel_reason || '',
     ]);
     const csv = [headers, ...rows].map((r) => r.map((c) => `"${c}"`).join(',')).join('\n');
     const blob = new Blob([csv], { type: 'text/csv' });
@@ -112,19 +115,27 @@ export default function AdminOrdersTab({ orders }: Props) {
         <p className="text-center py-12 text-muted-foreground">No orders found</p>
       ) : (
         filtered.map((order) => (
-          <div key={order.id} className="bg-card rounded-lg border p-4">
+          <div key={order.id} className={`bg-card rounded-lg border p-4 ${order.status === 'CANCELLED' ? 'opacity-60' : ''}`}>
             <div className="flex items-center justify-between mb-2">
               <span className="font-bold">Table {order.table_number}</span>
               <Badge variant="outline" className={statusColors[order.status]}>{order.status}</Badge>
             </div>
             <div className="space-y-1">
               {order.items?.map((item) => (
-                <div key={item.id} className="text-sm flex justify-between">
-                  <span>{item.name} × {item.quantity}</span>
-                  <span>₹{item.price * item.quantity}</span>
+                <div key={item.id}>
+                  <div className="text-sm flex justify-between">
+                    <span>{item.name} × {item.quantity}</span>
+                    <span>₹{item.price * item.quantity}</span>
+                  </div>
+                  {item.notes && (
+                    <p className="text-xs text-muted-foreground italic ml-2">📝 {item.notes}</p>
+                  )}
                 </div>
               ))}
             </div>
+            {order.status === 'CANCELLED' && order.cancel_reason && (
+              <p className="text-xs text-destructive mt-2">Reason: {order.cancel_reason} ({order.cancelled_by})</p>
+            )}
             <div className="border-t mt-2 pt-2 flex items-center justify-between">
               <span className="font-bold text-sm">Total: ₹{order.total_price}</span>
               <span className="text-xs text-muted-foreground">{format(new Date(order.created_at), 'dd MMM, hh:mm a')}</span>

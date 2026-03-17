@@ -51,10 +51,12 @@ export type Database = {
           available: boolean
           category_id: string
           created_at: string
+          deleted_at: string | null
           description: string | null
           emoji: string | null
           id: string
           image_url: string | null
+          is_deleted: boolean
           name: string
           price: number
           restaurant_id: string
@@ -64,10 +66,12 @@ export type Database = {
           available?: boolean
           category_id: string
           created_at?: string
+          deleted_at?: string | null
           description?: string | null
           emoji?: string | null
           id?: string
           image_url?: string | null
+          is_deleted?: boolean
           name: string
           price: number
           restaurant_id: string
@@ -77,10 +81,12 @@ export type Database = {
           available?: boolean
           category_id?: string
           created_at?: string
+          deleted_at?: string | null
           description?: string | null
           emoji?: string | null
           id?: string
           image_url?: string | null
+          is_deleted?: boolean
           name?: string
           price?: number
           restaurant_id?: string
@@ -109,6 +115,7 @@ export type Database = {
           id: string
           menu_item_id: string
           name: string
+          notes: string | null
           order_id: string
           price: number
           quantity: number
@@ -118,6 +125,7 @@ export type Database = {
           id?: string
           menu_item_id: string
           name: string
+          notes?: string | null
           order_id: string
           price: number
           quantity: number
@@ -127,6 +135,7 @@ export type Database = {
           id?: string
           menu_item_id?: string
           name?: string
+          notes?: string | null
           order_id?: string
           price?: number
           quantity?: number
@@ -150,6 +159,8 @@ export type Database = {
       }
       orders: {
         Row: {
+          cancel_reason: string | null
+          cancelled_by: string | null
           created_at: string
           id: string
           restaurant_id: string
@@ -160,6 +171,8 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          cancel_reason?: string | null
+          cancelled_by?: string | null
           created_at?: string
           id?: string
           restaurant_id: string
@@ -170,6 +183,8 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          cancel_reason?: string | null
+          cancelled_by?: string | null
           created_at?: string
           id?: string
           restaurant_id?: string
@@ -319,7 +334,7 @@ export type Database = {
     }
     Enums: {
       app_role: "admin" | "chef" | "user"
-      order_status: "NEW" | "PREPARING" | "READY" | "SERVED"
+      order_status: "NEW" | "PREPARING" | "READY" | "SERVED" | "CANCELLED"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -448,7 +463,7 @@ export const Constants = {
   public: {
     Enums: {
       app_role: ["admin", "chef", "user"],
-      order_status: ["NEW", "PREPARING", "READY", "SERVED"],
+      order_status: ["NEW", "PREPARING", "READY", "SERVED", "CANCELLED"],
     },
   },
 } as const

@@ -29,9 +29,12 @@ export default function AdminMenuTab({ menuItems, categories, onReload, setMenuI
   const [form, setForm] = useState(emptyForm);
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
 
+  // Only show non-deleted items in admin menu management
+  const visibleItems = menuItems.filter((m) => !m.is_deleted);
+
   const categoryGroups = categories.map((cat) => ({
     ...cat,
-    items: menuItems.filter((m) => m.category_id === cat.id),
+    items: visibleItems.filter((m) => m.category_id === cat.id),
   }));
 
   const openAdd = () => { setEditingItem(null); setForm(emptyForm); setDialogOpen(true); };
@@ -64,7 +67,7 @@ export default function AdminMenuTab({ menuItems, categories, onReload, setMenuI
 
   const handleDelete = async (id: string, name: string) => {
     try {
-      await deleteMenuItemApi(id);
+      await deleteMenuItemApi(id); // Now soft-deletes
       setDeleteConfirm(null);
       toast.success(`"${name}" removed from menu`);
       onReload();
@@ -91,6 +94,9 @@ export default function AdminMenuTab({ menuItems, categories, onReload, setMenuI
         {categoryGroups.map((cat) => (
           <div key={cat.id}>
             <h2 className="text-lg font-bold mb-2">{cat.name}</h2>
+            {cat.items.length === 0 && (
+              <p className="text-sm text-muted-foreground">No items in this category</p>
+            )}
             <div className="grid gap-2 sm:grid-cols-2">
               {cat.items.map((item) => (
                 <div key={item.id} className={`flex items-center gap-3 p-3 bg-card rounded-lg border ${!item.available ? 'opacity-60' : ''}`}>

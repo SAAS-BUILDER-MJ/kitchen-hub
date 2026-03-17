@@ -3,16 +3,26 @@ import { useState } from 'react';
 import { useStore } from '@/store/useStore';
 import { placeOrder as placeOrderApi } from '@/lib/supabase-api';
 import { saveOrderForTracking } from '@/components/customer/OrderTracker';
-import { ArrowLeft, Minus, Plus, Trash2 } from 'lucide-react';
+import { ArrowLeft, Minus, Plus, Trash2, MessageSquare } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { toast } from 'sonner';
 
 const CartPage = () => {
   const navigate = useNavigate();
-  const { cart, tableNumber, tableId, restaurantId, updateQuantity, clearCart } = useStore();
+  const { cart, tableNumber, tableId, restaurantId, updateQuantity, updateItemNotes, clearCart } = useStore();
   const [placing, setPlacing] = useState(false);
+  const [expandedNotes, setExpandedNotes] = useState<Set<string>>(new Set());
 
   const total = cart.reduce((s, c) => s + c.price * c.quantity, 0);
+
+  const toggleNotes = (id: string) => {
+    setExpandedNotes((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  };
 
   const handlePlaceOrder = async () => {
     if (!tableId) {
@@ -25,7 +35,13 @@ const CartPage = () => {
         restaurantId,
         tableId,
         tableNumber,
-        cart.map((c) => ({ menu_item_id: c.menu_item_id, name: c.name, quantity: c.quantity, price: c.price }))
+        cart.map((c) => ({
+          menu_item_id: c.menu_item_id,
+          name: c.name,
+          quantity: c.quantity,
+          price: c.price,
+          notes: c.notes || null,
+        }))
       );
       saveOrderForTracking(order.id);
       clearCart();
@@ -64,27 +80,49 @@ const CartPage = () => {
 
       <div className="max-w-2xl mx-auto px-4 py-4 space-y-3">
         {cart.map((item) => (
-          <div key={item.id} className="flex items-center gap-3 p-4 bg-card rounded-lg border">
-            <span className="text-3xl">{item.emoji}</span>
-            <div className="flex-1 min-w-0">
-              <h3 className="font-semibold text-sm">{item.name}</h3>
-              <p className="text-sm font-bold text-primary">₹{item.price * item.quantity}</p>
+          <div key={item.id} className="p-4 bg-card rounded-lg border">
+            <div className="flex items-center gap-3">
+              <span className="text-3xl">{item.emoji}</span>
+              <div className="flex-1 min-w-0">
+                <h3 className="font-semibold text-sm">{item.name}</h3>
+                <p className="text-sm font-bold text-primary">₹{item.price * item.quantity}</p>
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => updateQuantity(item.id, item.quantity - 1)}
+                  className="h-7 w-7 rounded-full bg-secondary flex items-center justify-center"
+                >
+                  {item.quantity === 1 ? <Trash2 className="h-3 w-3 text-destructive" /> : <Minus className="h-3 w-3" />}
+                </button>
+                <span className="text-sm font-bold w-4 text-center">{item.quantity}</span>
+                <button
+                  onClick={() => updateQuantity(item.id, item.quantity + 1)}
+                  className="h-7 w-7 rounded-full bg-primary text-primary-foreground flex items-center justify-center"
+                >
+                  <Plus className="h-3 w-3" />
+                </button>
+              </div>
             </div>
-            <div className="flex items-center gap-2">
-              <button
-                onClick={() => updateQuantity(item.id, item.quantity - 1)}
-                className="h-7 w-7 rounded-full bg-secondary flex items-center justify-center"
-              >
-                {item.quantity === 1 ? <Trash2 className="h-3 w-3 text-destructive" /> : <Minus className="h-3 w-3" />}
-              </button>
-              <span className="text-sm font-bold w-4 text-center">{item.quantity}</span>
-              <button
-                onClick={() => updateQuantity(item.id, item.quantity + 1)}
-                className="h-7 w-7 rounded-full bg-primary text-primary-foreground flex items-center justify-center"
-              >
-                <Plus className="h-3 w-3" />
-              </button>
-            </div>
+            {/* Notes toggle */}
+            <button
+              onClick={() => toggleNotes(item.id)}
+              className="mt-2 flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
+            >
+              <MessageSquare className="h-3 w-3" />
+              {item.notes ? 'Edit special instructions' : 'Add special instructions'}
+            </button>
+            {expandedNotes.has(item.id) && (
+              <Input
+                className="mt-2 h-8 text-xs"
+                placeholder="e.g. no onions, extra spicy, allergy: nuts"
+                value={item.notes}
+                onChange={(e) => updateItemNotes(item.id, e.target.value)}
+                autoFocus
+              />
+            )}
+            {!expandedNotes.has(item.id) && item.notes && (
+              <p className="mt-1 text-xs text-muted-foreground italic">📝 {item.notes}</p>
+            )}
           </div>
         ))}
       </div>

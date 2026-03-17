@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
-import { Clock, ChefHat, CheckCircle2, UtensilsCrossed, ClipboardList, X } from 'lucide-react';
+import { Clock, ChefHat, CheckCircle2, XCircle, ClipboardList, X } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { DbOrder, subscribeToOrders, DEMO_RESTAURANT_ID } from '@/lib/supabase-api';
@@ -26,7 +26,7 @@ export function getTrackedOrderIds(): string[] {
   }
 }
 
-/** Remove served/old orders from localStorage */
+/** Remove served/cancelled/old orders from localStorage */
 function cleanupTrackedOrders(activeIds: string[]) {
   localStorage.setItem(ORDER_STORAGE_KEY, JSON.stringify(activeIds));
 }
@@ -35,14 +35,14 @@ const statusIcons: Record<string, React.ReactNode> = {
   NEW: <Clock className="h-4 w-4" />,
   PREPARING: <ChefHat className="h-4 w-4" />,
   READY: <CheckCircle2 className="h-4 w-4" />,
-  SERVED: <UtensilsCrossed className="h-4 w-4" />,
+  CANCELLED: <XCircle className="h-4 w-4" />,
 };
 
 const statusColors: Record<string, string> = {
   NEW: 'bg-warning/10 text-warning border-warning/30',
   PREPARING: 'bg-primary/10 text-primary border-primary/30',
   READY: 'bg-accent/10 text-accent border-accent/30',
-  SERVED: 'bg-success/10 text-success border-success/30',
+  CANCELLED: 'bg-destructive/10 text-destructive border-destructive/30',
 };
 
 interface OrderTrackerProps {
@@ -68,7 +68,7 @@ export default function OrderTracker({ tableNumber }: OrderTrackerProps) {
         .from('orders')
         .select('*, order_items(*)')
         .in('id', ids)
-        .neq('status', 'SERVED')
+        .not('status', 'in', '("SERVED","CANCELLED")')
         .order('created_at', { ascending: true });
 
       if (error) throw error;
@@ -80,7 +80,7 @@ export default function OrderTracker({ tableNumber }: OrderTrackerProps) {
 
       setOrders(activeOrders);
 
-      // Cleanup: remove served orders from localStorage
+      // Cleanup: remove served/cancelled orders from localStorage
       const activeIds = activeOrders.map((o) => o.id);
       cleanupTrackedOrders(activeIds);
     } catch {
@@ -143,16 +143,21 @@ export default function OrderTracker({ tableNumber }: OrderTrackerProps) {
                 <div key={order.id} className="bg-background rounded-lg border p-4">
                   <div className="flex items-center justify-between mb-2">
                     <span className="font-semibold text-sm">Table {order.table_number}</span>
-                    <Badge variant="outline" className={`flex items-center gap-1 ${statusColors[order.status]}`}>
+                    <Badge variant="outline" className={`flex items-center gap-1 ${statusColors[order.status] || ''}`}>
                       {statusIcons[order.status]}
                       {order.status}
                     </Badge>
                   </div>
                   <div className="space-y-1">
                     {order.items?.map((item) => (
-                      <div key={item.id} className="text-sm flex justify-between">
-                        <span>{item.name} × {item.quantity}</span>
-                        <span className="text-muted-foreground">₹{item.price * item.quantity}</span>
+                      <div key={item.id}>
+                        <div className="text-sm flex justify-between">
+                          <span>{item.name} × {item.quantity}</span>
+                          <span className="text-muted-foreground">₹{item.price * item.quantity}</span>
+                        </div>
+                        {item.notes && (
+                          <p className="text-xs text-muted-foreground italic ml-2">📝 {item.notes}</p>
+                        )}
                       </div>
                     ))}
                   </div>

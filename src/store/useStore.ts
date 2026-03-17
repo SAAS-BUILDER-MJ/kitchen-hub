@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { supabase } from '@/integrations/supabase/client';
 
-export type OrderStatus = 'NEW' | 'PREPARING' | 'READY' | 'SERVED';
+export type OrderStatus = 'NEW' | 'PREPARING' | 'READY' | 'SERVED' | 'CANCELLED';
 
 export interface CartItem {
   id: string;
@@ -10,6 +10,7 @@ export interface CartItem {
   price: number;
   emoji: string;
   quantity: number;
+  notes: string;
 }
 
 interface AuthState {
@@ -27,6 +28,7 @@ interface AppStore {
   addToCart: (item: { id: string; name: string; price: number; emoji: string | null }) => void;
   removeFromCart: (itemId: string) => void;
   updateQuantity: (itemId: string, quantity: number) => void;
+  updateItemNotes: (itemId: string, notes: string) => void;
   clearCart: () => void;
   setTableNumber: (table: number) => void;
   setTableId: (id: string) => void;
@@ -69,6 +71,7 @@ export const useStore = create<AppStore>((set, get) => ({
           price: item.price,
           emoji: item.emoji || '🍽️',
           quantity: 1,
+          notes: '',
         }],
       };
     }),
@@ -84,6 +87,11 @@ export const useStore = create<AppStore>((set, get) => ({
       };
     }),
 
+  updateItemNotes: (itemId, notes) =>
+    set((state) => ({
+      cart: state.cart.map((c) => (c.id === itemId ? { ...c, notes } : c)),
+    })),
+
   clearCart: () => set({ cart: [] }),
   setTableNumber: (table) => set({ tableNumber: table }),
   setTableId: (id) => set({ tableId: id }),
@@ -94,7 +102,6 @@ export const useStore = create<AppStore>((set, get) => ({
     const { data, error } = await supabase.auth.signInWithPassword({ email, password });
     if (error || !data.user) return false;
 
-    // Check role from user_roles table
     const { data: roles } = await supabase
       .from('user_roles')
       .select('role')

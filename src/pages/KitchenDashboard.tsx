@@ -1,23 +1,27 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useStore, OrderStatus } from '@/store/useStore';
-import { fetchOrders, updateOrderStatus, subscribeToOrders, DbOrder, DEMO_RESTAURANT_ID } from '@/lib/supabase-api';
-import { LogOut, ChefHat, Clock, CheckCircle2, BellRing, UtensilsCrossed, Layers } from 'lucide-react';
+import { fetchOrders, updateOrderStatus, cancelOrder, subscribeToOrders, DbOrder, DEMO_RESTAURANT_ID } from '@/lib/supabase-api';
+import { LogOut, ChefHat, Clock, CheckCircle2, BellRing, UtensilsCrossed, Layers, XCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Input } from '@/components/ui/input';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { toast } from 'sonner';
 
-const statusColors: Record<OrderStatus, string> = {
+const statusColors: Record<string, string> = {
   NEW: 'bg-warning/10 text-warning border-warning/30',
   PREPARING: 'bg-primary/10 text-primary border-primary/30',
   READY: 'bg-accent/10 text-accent border-accent/30',
   SERVED: 'bg-success/10 text-success border-success/30',
+  CANCELLED: 'bg-destructive/10 text-destructive border-destructive/30',
 };
 
-const nextStatus: Record<OrderStatus, OrderStatus | null> = {
+const nextStatus: Record<string, OrderStatus | null> = {
   NEW: 'PREPARING',
   PREPARING: 'READY',
   READY: 'SERVED',
   SERVED: null,
+  CANCELLED: null,
 };
 
 interface DishGroup {
@@ -31,14 +35,16 @@ const KitchenDashboard = () => {
   const [orders, setOrders] = useState<DbOrder[]>([]);
   const [filter, setFilter] = useState<OrderStatus | 'ALL'>('ALL');
   const [showDishGrouping, setShowDishGrouping] = useState(false);
+  const [cancelDialogOrder, setCancelDialogOrder] = useState<DbOrder | null>(null);
+  const [cancelReason, setCancelReason] = useState('');
+  const [cancellingId, setCancellingId] = useState<string | null>(null);
   const prevOrderCount = useRef(0);
 
   const loadOrders = useCallback(async () => {
     try {
       const data = await fetchOrders();
       setOrders(data);
-      
-      // Notification for new orders
+
       const newCount = data.filter((o) => o.status === 'NEW').length;
       if (newCount > prevOrderCount.current && prevOrderCount.current > 0) {
         toast.info(`🔔 New order received!`, { duration: 5000 });
@@ -62,11 +68,8 @@ const KitchenDashboard = () => {
     } catch {}
   }, []);
 
-  useEffect(() => {
-    loadOrders();
-  }, [loadOrders]);
+  useEffect(() => { loadOrders(); }, [loadOrders]);
 
-  // Real-time subscription
   useEffect(() => {
     const unsub = subscribeToOrders(DEMO_RESTAURANT_ID, loadOrders);
     return unsub;
@@ -76,23 +79,37 @@ const KitchenDashboard = () => {
     try {
       await updateOrderStatus(orderId, status);
       setOrders((prev) => prev.map((o) => o.id === orderId ? { ...o, status } : o));
-      if (status === 'SERVED') {
-        toast.success('Order marked as served');
-      }
+      if (status === 'SERVED') toast.success('Order marked as served');
     } catch {
       toast.error('Failed to update order status');
     }
   };
 
-  // Filter out SERVED orders from kitchen view, sort oldest first (chronological)
-  const activeOrders = useMemo(() => 
+  const handleCancelOrder = async () => {
+    if (!cancelDialogOrder) return;
+    setCancellingId(cancelDialogOrder.id);
+    try {
+      await cancelOrder(cancelDialogOrder.id, 'staff', cancelReason || 'Cancelled by staff');
+      setOrders((prev) => prev.map((o) => o.id === cancelDialogOrder.id ? { ...o, status: 'CANCELLED' as OrderStatus } : o));
+      toast.success('Order cancelled');
+      setCancelDialogOrder(null);
+      setCancelReason('');
+    } catch {
+      toast.error('Failed to cancel order');
+    } finally {
+      setCancellingId(null);
+    }
+  };
+
+  // Filter out SERVED and CANCELLED orders from kitchen view
+  const activeOrders = useMemo(() =>
     orders
-      .filter((o) => o.status !== 'SERVED')
+      .filter((o) => o.status !== 'SERVED' && o.status !== 'CANCELLED')
       .sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()),
     [orders]
   );
 
-  const displayed = useMemo(() => 
+  const displayed = useMemo(() =>
     filter === 'ALL' ? activeOrders : activeOrders.filter((o) => o.status === filter),
     [activeOrders, filter]
   );
@@ -103,7 +120,6 @@ const KitchenDashboard = () => {
     READY: activeOrders.filter((o) => o.status === 'READY').length,
   };
 
-  // Group common dishes across active (non-served) orders
   const dishGroups = useMemo((): DishGroup[] => {
     const groupMap = new Map<string, DishGroup>();
     activeOrders
@@ -123,7 +139,6 @@ const KitchenDashboard = () => {
           }
         });
       });
-    // Only return dishes that appear in multiple orders
     return Array.from(groupMap.values())
       .filter((g) => g.orders.length > 1)
       .sort((a, b) => b.totalQuantity - a.totalQuantity);
@@ -138,7 +153,6 @@ const KitchenDashboard = () => {
     }
   };
 
-  // Check if a dish in an order is also in other active orders
   const isDishCommon = (itemName: string) => dishGroups.some((g) => g.name === itemName);
 
   return (
@@ -206,9 +220,7 @@ const KitchenDashboard = () => {
                 <div key={group.name} className="bg-card rounded-lg border p-3">
                   <div className="flex items-center justify-between mb-1">
                     <span className="font-semibold text-sm">{group.name}</span>
-                    <Badge variant="default" className="bg-primary/90">
-                      Total: {group.totalQuantity}
-                    </Badge>
+                    <Badge variant="default" className="bg-primary/90">Total: {group.totalQuantity}</Badge>
                   </div>
                   <div className="flex flex-wrap gap-1">
                     {group.orders.map((o) => (
@@ -258,29 +270,73 @@ const KitchenDashboard = () => {
               </div>
               <div className="space-y-1 mb-3">
                 {order.items?.map((item) => (
-                  <div key={item.id} className={`text-sm flex justify-between items-center ${isDishCommon(item.name) ? 'bg-primary/5 rounded px-2 py-0.5 -mx-2' : ''}`}>
-                    <span className="flex items-center gap-1">
-                      {item.name} × {item.quantity}
-                      {isDishCommon(item.name) && (
-                        <Layers className="h-3 w-3 text-primary" />
-                      )}
-                    </span>
-                    <span className="text-muted-foreground">₹{item.price * item.quantity}</span>
+                  <div key={item.id}>
+                    <div className={`text-sm flex justify-between items-center ${isDishCommon(item.name) ? 'bg-primary/5 rounded px-2 py-0.5 -mx-2' : ''}`}>
+                      <span className="flex items-center gap-1">
+                        {item.name} × {item.quantity}
+                        {isDishCommon(item.name) && <Layers className="h-3 w-3 text-primary" />}
+                      </span>
+                      <span className="text-muted-foreground">₹{item.price * item.quantity}</span>
+                    </div>
+                    {item.notes && (
+                      <p className="text-xs text-warning font-medium ml-2 mt-0.5">⚠️ {item.notes}</p>
+                    )}
                   </div>
                 ))}
               </div>
               <div className="flex items-center justify-between border-t pt-3">
                 <span className="font-bold text-sm">Total: ₹{order.total_price}</span>
-                {action && nextStatus[order.status] && (
-                  <Button size="sm" onClick={() => handleStatusUpdate(order.id, nextStatus[order.status]!)}>
-                    {action.icon} {action.label}
-                  </Button>
-                )}
+                <div className="flex items-center gap-2">
+                  {/* Staff cancel button */}
+                  {(order.status === 'NEW' || order.status === 'PREPARING') && (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="text-destructive border-destructive/30 hover:bg-destructive/10"
+                      onClick={() => { setCancelDialogOrder(order); setCancelReason(''); }}
+                    >
+                      <XCircle className="h-4 w-4 mr-1" /> Cancel
+                    </Button>
+                  )}
+                  {action && nextStatus[order.status] && (
+                    <Button size="sm" onClick={() => handleStatusUpdate(order.id, nextStatus[order.status]!)}>
+                      {action.icon} {action.label}
+                    </Button>
+                  )}
+                </div>
               </div>
             </div>
           );
         })}
       </div>
+
+      {/* Cancel confirmation dialog */}
+      <Dialog open={!!cancelDialogOrder} onOpenChange={(open) => { if (!open) setCancelDialogOrder(null); }}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Cancel Order — Table {cancelDialogOrder?.table_number}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3 py-2">
+            <p className="text-sm text-muted-foreground">Please provide a reason for cancelling this order.</p>
+            <Input
+              placeholder="e.g. Customer left, item unavailable..."
+              value={cancelReason}
+              onChange={(e) => setCancelReason(e.target.value)}
+              autoFocus
+            />
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setCancelDialogOrder(null)}>Keep Order</Button>
+            <Button
+              variant="destructive"
+              onClick={handleCancelOrder}
+              disabled={cancellingId === cancelDialogOrder?.id}
+            >
+              {cancellingId === cancelDialogOrder?.id ? 'Cancelling...' : 'Cancel Order'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

@@ -1,16 +1,17 @@
 import { useMemo } from 'react';
 import { getHours } from 'date-fns';
-import { TrendingUp, ShoppingBag, Users } from 'lucide-react';
+import { TrendingUp, ShoppingBag, Users, XCircle } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
 import { OrderStatus } from '@/store/useStore';
 import { DbOrder } from '@/lib/supabase-api';
 
-const statusColors: Record<OrderStatus, string> = {
+const statusColors: Record<string, string> = {
   NEW: 'bg-warning/10 text-warning border-warning/30',
   PREPARING: 'bg-primary/10 text-primary border-primary/30',
   READY: 'bg-accent/10 text-accent border-accent/30',
   SERVED: 'bg-success/10 text-success border-success/30',
+  CANCELLED: 'bg-destructive/10 text-destructive border-destructive/30',
 };
 
 interface Props {
@@ -23,6 +24,7 @@ interface Props {
 export default function AdminOverviewTab({ orders, menuItemsCount, categoriesCount, availableCount }: Props) {
   // Revenue only counts SERVED orders
   const servedOrders = orders.filter((o) => o.status === 'SERVED');
+  const cancelledCount = orders.filter((o) => o.status === 'CANCELLED').length;
   const totalRevenue = servedOrders.reduce((sum, o) => sum + Number(o.total_price), 0);
   const totalOrders = orders.length;
   const servedCount = servedOrders.length;
@@ -34,6 +36,7 @@ export default function AdminOverviewTab({ orders, menuItemsCount, categoriesCou
     PREPARING: orders.filter((o) => o.status === 'PREPARING').length,
     READY: orders.filter((o) => o.status === 'READY').length,
     SERVED: servedCount,
+    CANCELLED: cancelledCount,
   };
 
   const itemCounts: Record<string, number> = {};
@@ -44,7 +47,6 @@ export default function AdminOverviewTab({ orders, menuItemsCount, categoriesCou
   );
   const popularItems = Object.entries(itemCounts).sort(([, a], [, b]) => b - a).slice(0, 5);
 
-  // Revenue chart also only counts SERVED orders
   const hourlyData = useMemo(() => {
     const buckets: Record<number, number> = {};
     servedOrders.forEach((o) => {
@@ -71,10 +73,17 @@ export default function AdminOverviewTab({ orders, menuItemsCount, categoriesCou
         <StatCard icon={<TrendingUp className="h-5 w-5 text-success" />} label="Avg. Order (Served)" value={`₹${avgOrderValue}`} />
       </div>
 
+      {cancelledCount > 0 && (
+        <div className="bg-destructive/5 border border-destructive/20 rounded-lg p-3 flex items-center gap-2">
+          <XCircle className="h-4 w-4 text-destructive" />
+          <span className="text-sm text-destructive font-medium">{cancelledCount} cancelled order{cancelledCount > 1 ? 's' : ''} (excluded from revenue)</span>
+        </div>
+      )}
+
       <div className="bg-card rounded-lg border p-4">
         <h2 className="font-bold text-sm mb-3">Order Status Breakdown</h2>
-        <div className="grid grid-cols-4 gap-2">
-          {(['NEW', 'PREPARING', 'READY', 'SERVED'] as OrderStatus[]).map((s) => (
+        <div className="grid grid-cols-5 gap-2">
+          {(['NEW', 'PREPARING', 'READY', 'SERVED', 'CANCELLED'] as OrderStatus[]).map((s) => (
             <div key={s} className={`p-3 rounded-lg text-center ${statusColors[s]}`}>
               <div className="text-xl font-bold">{statusCounts[s]}</div>
               <div className="text-[10px] font-medium">{s}</div>

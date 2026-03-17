@@ -3,7 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 // Demo restaurant ID (seeded)
 export const DEMO_RESTAURANT_ID = 'a0000000-0000-0000-0000-000000000001';
 
-export type OrderStatus = 'NEW' | 'PREPARING' | 'READY' | 'SERVED';
+export type OrderStatus = 'NEW' | 'PREPARING' | 'READY' | 'SERVED' | 'CANCELLED';
 
 export interface DbMenuItem {
   id: string;
@@ -15,6 +15,8 @@ export interface DbMenuItem {
   image_url: string | null;
   emoji: string | null;
   available: boolean;
+  is_deleted: boolean;
+  deleted_at: string | null;
   category_name?: string;
 }
 
@@ -27,6 +29,8 @@ export interface DbOrder {
   total_price: number;
   created_at: string;
   updated_at: string;
+  cancelled_by: string | null;
+  cancel_reason: string | null;
   items?: DbOrderItem[];
 }
 
@@ -37,10 +41,26 @@ export interface DbOrderItem {
   name: string;
   quantity: number;
   price: number;
+  notes: string | null;
 }
 
 // ---- Menu ----
 export async function fetchMenuItems(restaurantId: string = DEMO_RESTAURANT_ID) {
+  const { data, error } = await supabase
+    .from('menu_items')
+    .select('*, menu_categories(name)')
+    .eq('restaurant_id', restaurantId)
+    .eq('is_deleted', false)
+    .order('name');
+  if (error) throw error;
+  return (data || []).map((item: any) => ({
+    ...item,
+    category_name: item.menu_categories?.name || '',
+  })) as DbMenuItem[];
+}
+
+/** Fetch ALL menu items including soft-deleted (for admin/analytics) */
+export async function fetchAllMenuItems(restaurantId: string = DEMO_RESTAURANT_ID) {
   const { data, error } = await supabase
     .from('menu_items')
     .select('*, menu_categories(name)')
@@ -90,6 +110,8 @@ export async function updateMenuItem(id: string, updates: Partial<{
   emoji: string;
   available: boolean;
   category_id: string;
+  is_deleted: boolean;
+  deleted_at: string | null;
 }>) {
   const { error } = await supabase
     .from('menu_items')
@@ -99,9 +121,10 @@ export async function updateMenuItem(id: string, updates: Partial<{
 }
 
 export async function deleteMenuItem(id: string) {
+  // Soft delete instead of hard delete
   const { error } = await supabase
     .from('menu_items')
-    .delete()
+    .update({ is_deleted: true, deleted_at: new Date().toISOString() })
     .eq('id', id);
   if (error) throw error;
 }
@@ -123,7 +146,7 @@ export async function placeOrder(
   restaurantId: string,
   tableId: string,
   tableNumber: number,
-  items: { menu_item_id: string; name: string; quantity: number; price: number }[]
+  items: { menu_item_id: string; name: string; quantity: number; price: number; notes?: string | null }[]
 ) {
   const totalPrice = items.reduce((sum, i) => sum + i.price * i.quantity, 0);
 
@@ -145,6 +168,7 @@ export async function placeOrder(
     name: i.name,
     quantity: i.quantity,
     price: i.price,
+    notes: i.notes || null,
   }));
 
   const { error: itemsError } = await supabase
@@ -182,6 +206,19 @@ export async function updateOrderStatus(orderId: string, status: OrderStatus) {
   const { error } = await supabase
     .from('orders')
     .update({ status })
+    .eq('id', orderId);
+  if (error) throw error;
+}
+
+/** Cancel an order — customer (grace period) or staff (with reason) */
+export async function cancelOrder(orderId: string, cancelledBy: 'customer' | 'staff', reason?: string) {
+  const { error } = await supabase
+    .from('orders')
+    .update({
+      status: 'CANCELLED' as any,
+      cancelled_by: cancelledBy,
+      cancel_reason: reason || null,
+    })
     .eq('id', orderId);
   if (error) throw error;
 }

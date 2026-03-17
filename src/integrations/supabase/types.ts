@@ -115,6 +115,7 @@ export type Database = {
           id: string
           menu_item_id: string
           name: string
+          notes: string | null
           order_id: string
           price: number
           quantity: number
@@ -124,6 +125,7 @@ export type Database = {
           id?: string
           menu_item_id: string
           name: string
+          notes?: string | null
           order_id: string
           price: number
           quantity: number
@@ -133,6 +135,7 @@ export type Database = {
           id?: string
           menu_item_id?: string
           name?: string
+          notes?: string | null
           order_id?: string
           price?: number
           quantity?: number

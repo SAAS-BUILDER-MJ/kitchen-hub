@@ -6,6 +6,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { useStore } from "@/store/useStore";
 import { useEffect } from "react";
 import Index from "./pages/Index";
+import ScanPage from "./pages/ScanPage";
 import MenuPage from "./pages/MenuPage";
 import CartPage from "./pages/CartPage";
 import OrderConfirmation from "./pages/OrderConfirmation";
@@ -48,6 +49,7 @@ const App = () => (
         <AuthInit>
           <Routes>
             <Route path="/" element={<Index />} />
+            <Route path="/scan" element={<ScanPage />} />
             <Route path="/menu" element={<MenuPage />} />
             <Route path="/cart" element={<CartPage />} />
             <Route path="/order-confirmation/:orderId" element={<OrderConfirmation />} />

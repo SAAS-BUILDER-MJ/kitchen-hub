@@ -4,16 +4,17 @@ import {
   fetchMenuItems, fetchCategories, fetchOrders,
   DbMenuItem, DbOrder, DEMO_RESTAURANT_ID,
 } from '@/lib/supabase-api';
-import { LogOut, LayoutDashboard } from 'lucide-react';
+import { LogOut, LayoutDashboard, QrCode } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import AdminDateFilter, { DateRange, getDateRange } from '@/components/admin/AdminDateFilter';
 import AdminOverviewTab from '@/components/admin/AdminOverviewTab';
 import AdminOrdersTab from '@/components/admin/AdminOrdersTab';
 import AdminMenuTab from '@/components/admin/AdminMenuTab';
+import AdminQrTab from '@/components/admin/AdminQrTab';
 
 const AdminDashboard = () => {
   const { logout } = useStore();
-  const [tab, setTab] = useState<'overview' | 'orders' | 'menu'>('overview');
+  const [tab, setTab] = useState<'overview' | 'orders' | 'menu' | 'qr'>('overview');
   const [menuItems, setMenuItems] = useState<DbMenuItem[]>([]);
   const [categories, setCategories] = useState<{ id: string; name: string }[]>([]);
   const [allOrders, setAllOrders] = useState<DbOrder[]>([]);
@@ -61,15 +62,16 @@ const AdminDashboard = () => {
       <div className="max-w-5xl mx-auto px-4 py-3 space-y-3">
         {/* Tab switcher */}
         <div className="flex gap-2 overflow-x-auto">
-          {(['overview', 'orders', 'menu'] as const).map((t) => (
+          {(['overview', 'orders', 'menu', 'qr'] as const).map((t) => (
             <button
               key={t}
               onClick={() => setTab(t)}
-              className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors capitalize shrink-0 ${
+              className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors capitalize shrink-0 flex items-center gap-1 ${
                 tab === t ? 'bg-primary text-primary-foreground' : 'bg-secondary text-secondary-foreground'
               }`}
             >
-              {t}
+              {t === 'qr' && <QrCode className="h-3.5 w-3.5" />}
+              {t === 'qr' ? 'QR Codes' : t}
             </button>
           ))}
         </div>
@@ -98,6 +100,7 @@ const AdminDashboard = () => {
             setMenuItems={setMenuItems}
           />
         )}
+        {tab === 'qr' && <AdminQrTab />}
       </div>
     </div>
   );

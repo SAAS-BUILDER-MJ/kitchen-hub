@@ -331,6 +331,17 @@ export type Database = {
         }
         Returns: boolean
       }
+      resolve_qr: {
+        Args: { _qr_code: string }
+        Returns: {
+          is_active: boolean
+          restaurant_id: string
+          restaurant_name: string
+          table_id: string
+          table_number: number
+        }[]
+      }
+      rotate_qr_code: { Args: { _table_id: string }; Returns: string }
     }
     Enums: {
       app_role: "admin" | "chef" | "user"

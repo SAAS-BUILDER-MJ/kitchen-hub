@@ -45,6 +45,10 @@ export function getTrackedOrderIds(tableNumber?: number): string[] {
 
 /** Remove served/cancelled/old orders from localStorage */
 function cleanupTrackedOrders(activeIds: string[]) {
+  const all = getAllTrackedOrders();
+  const cleaned = all.filter((o) => activeIds.includes(o.orderId));
+  localStorage.setItem(ORDER_STORAGE_KEY, JSON.stringify(cleaned));
+}
   localStorage.setItem(ORDER_STORAGE_KEY, JSON.stringify(activeIds));
 }
 

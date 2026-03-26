@@ -49,8 +49,6 @@ function cleanupTrackedOrders(activeIds: string[]) {
   const cleaned = all.filter((o) => activeIds.includes(o.orderId));
   localStorage.setItem(ORDER_STORAGE_KEY, JSON.stringify(cleaned));
 }
-  localStorage.setItem(ORDER_STORAGE_KEY, JSON.stringify(activeIds));
-}
 
 const statusIcons: Record<string, React.ReactNode> = {
   NEW: <Clock className="h-4 w-4" />,

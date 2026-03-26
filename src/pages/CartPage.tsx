@@ -43,7 +43,7 @@ const CartPage = () => {
           notes: c.notes || null,
         }))
       );
-      saveOrderForTracking(order.id);
+      saveOrderForTracking(order.id, tableNumber);
       clearCart();
       navigate(`/order-confirmation/${order.id}`);
     } catch (err) {

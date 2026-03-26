@@ -8,22 +8,39 @@ import { DbOrder, subscribeToOrders, DEMO_RESTAURANT_ID } from '@/lib/supabase-a
 
 const ORDER_STORAGE_KEY = 'customer_order_ids';
 
-/** Save an order ID to localStorage for tracking */
-export function saveOrderForTracking(orderId: string) {
-  const existing = getTrackedOrderIds();
-  if (!existing.includes(orderId)) {
-    existing.push(orderId);
+interface TrackedOrder {
+  orderId: string;
+  tableNumber: number;
+}
+
+/** Save an order ID to localStorage for tracking, scoped to a table */
+export function saveOrderForTracking(orderId: string, tableNumber: number) {
+  const existing = getAllTrackedOrders();
+  if (!existing.find((o) => o.orderId === orderId)) {
+    existing.push({ orderId, tableNumber });
     localStorage.setItem(ORDER_STORAGE_KEY, JSON.stringify(existing));
   }
 }
 
-/** Get tracked order IDs from localStorage */
-export function getTrackedOrderIds(): string[] {
+/** Get all tracked orders from localStorage */
+function getAllTrackedOrders(): TrackedOrder[] {
   try {
-    return JSON.parse(localStorage.getItem(ORDER_STORAGE_KEY) || '[]');
+    const raw = JSON.parse(localStorage.getItem(ORDER_STORAGE_KEY) || '[]');
+    // Handle legacy format (plain string array)
+    if (raw.length > 0 && typeof raw[0] === 'string') {
+      return [];
+    }
+    return raw as TrackedOrder[];
   } catch {
     return [];
   }
+}
+
+/** Get tracked order IDs for a specific table */
+export function getTrackedOrderIds(tableNumber?: number): string[] {
+  const all = getAllTrackedOrders();
+  if (tableNumber === undefined) return all.map((o) => o.orderId);
+  return all.filter((o) => o.tableNumber === tableNumber).map((o) => o.orderId);
 }
 
 /** Remove served/cancelled/old orders from localStorage */

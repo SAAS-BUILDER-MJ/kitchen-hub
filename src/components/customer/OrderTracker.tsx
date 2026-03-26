@@ -75,7 +75,7 @@ export default function OrderTracker({ tableNumber }: OrderTrackerProps) {
   const [loading, setLoading] = useState(false);
 
   const loadOrders = async () => {
-    const ids = getTrackedOrderIds();
+    const ids = getTrackedOrderIds(tableNumber);
     if (ids.length === 0) {
       setOrders([]);
       return;

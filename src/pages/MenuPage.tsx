@@ -40,7 +40,7 @@ const MenuPage = () => {
         setCategories(cats);
       })
       .finally(() => setLoading(false));
-  }, []);
+  }, [restaurantId]);
 
   const categoryNames = ['All', ...categories.map((c) => c.name)];
 

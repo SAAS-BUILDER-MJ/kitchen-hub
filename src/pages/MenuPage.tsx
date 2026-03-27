@@ -1,7 +1,7 @@
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { useEffect, useState } from 'react';
 import { useStore } from '@/store/useStore';
-import { fetchMenuItems, fetchCategories, fetchTable, DbMenuItem, DEMO_RESTAURANT_ID } from '@/lib/supabase-api';
+import { fetchMenuItems, fetchCategories, fetchTable, DbMenuItem } from '@/lib/supabase-api';
 import { ShoppingCart, Plus, Minus, Search, X } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -11,7 +11,7 @@ import OrderTracker from '@/components/customer/OrderTracker';
 const MenuPage = () => {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
-  const { cart, addToCart, removeFromCart, updateQuantity, setTableNumber, setTableId, tableNumber } = useStore();
+  const { cart, addToCart, removeFromCart, updateQuantity, setTableNumber, setTableId, tableNumber, tableId, restaurantId } = useStore();
   const [activeCategory, setActiveCategory] = useState<string>('All');
   const [searchQuery, setSearchQuery] = useState('');
   const [showSearch, setShowSearch] = useState(false);
@@ -24,15 +24,17 @@ const MenuPage = () => {
     if (table) {
       const num = parseInt(table, 10);
       setTableNumber(num);
-      // Fetch table ID
-      fetchTable(DEMO_RESTAURANT_ID, num)
-        .then((t) => setTableId(t.id))
-        .catch(() => {});
+      // Only fetch table ID if not already set by QR scan
+      if (!tableId) {
+        fetchTable(restaurantId, num)
+          .then((t) => setTableId(t.id))
+          .catch(() => {});
+      }
     }
-  }, [searchParams, setTableNumber, setTableId]);
+  }, [searchParams, setTableNumber, setTableId, tableId, restaurantId]);
 
   useEffect(() => {
-    Promise.all([fetchMenuItems(), fetchCategories()])
+    Promise.all([fetchMenuItems(restaurantId), fetchCategories(restaurantId)])
       .then(([items, cats]) => {
         setMenuItems(items);
         setCategories(cats);

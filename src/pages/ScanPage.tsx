@@ -10,7 +10,7 @@ type ScanState = 'loading' | 'error' | 'inactive' | 'not-found';
 const ScanPage = () => {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
-  const { setTableNumber, setTableId } = useStore();
+  const { setTableNumber, setTableId, setRestaurantId } = useStore();
   const [state, setState] = useState<ScanState>('loading');
   const [errorMessage, setErrorMessage] = useState('');
 
@@ -41,7 +41,8 @@ const ScanPage = () => {
           return;
         }
 
-        // Success — set context and redirect to menu
+        // Success — set full context and redirect to menu
+        setRestaurantId(result.restaurant_id);
         setTableNumber(result.table_number);
         setTableId(result.table_id);
         navigate(`/menu?table=${result.table_number}`, { replace: true });
@@ -53,7 +54,7 @@ const ScanPage = () => {
       });
 
     return () => { cancelled = true; };
-  }, [qrCode, navigate, setTableNumber, setTableId]);
+  }, [qrCode, navigate, setTableNumber, setTableId, setRestaurantId]);
 
   if (state === 'loading') {
     return (

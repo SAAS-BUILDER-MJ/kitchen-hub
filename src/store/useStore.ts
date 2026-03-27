@@ -32,6 +32,7 @@ interface AppStore {
   clearCart: () => void;
   setTableNumber: (table: number) => void;
   setTableId: (id: string) => void;
+  setRestaurantId: (id: string) => void;
 
   // Auth
   auth: AuthState;
@@ -95,6 +96,7 @@ export const useStore = create<AppStore>((set, get) => ({
   clearCart: () => set({ cart: [] }),
   setTableNumber: (table) => set({ tableNumber: table }),
   setTableId: (id) => set({ tableId: id }),
+  setRestaurantId: (id) => set({ restaurantId: id }),
 
   auth: { role: null, isAuthenticated: false, userId: null },
 

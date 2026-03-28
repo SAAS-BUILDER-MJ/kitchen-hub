@@ -30,6 +30,33 @@ interface DishGroup {
   orders: { orderId: string; tableNumber: number; quantity: number }[];
 }
 
+// Build a fingerprint of an order's items for change detection
+const orderFingerprint = (order: DbOrder): string => {
+  const items = (order.items || [])
+    .map((i) => `${i.menu_item_id}:${i.quantity}:${i.notes || ''}`)
+    .sort()
+    .join('|');
+  return `${items}::${order.total_price}`;
+};
+
+const playNotificationSound = (frequency1: number, frequency2: number) => {
+  try {
+    const ctx = new AudioContext();
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.connect(gain); gain.connect(ctx.destination);
+    osc.frequency.value = frequency1; gain.gain.value = 0.3;
+    osc.start(); osc.stop(ctx.currentTime + 0.15);
+    setTimeout(() => {
+      const osc2 = ctx.createOscillator();
+      const gain2 = ctx.createGain();
+      osc2.connect(gain2); gain2.connect(ctx.destination);
+      osc2.frequency.value = frequency2; gain2.gain.value = 0.3;
+      osc2.start(); osc2.stop(ctx.currentTime + 0.15);
+    }, 180);
+  } catch {}
+};
+
 const KitchenDashboard = () => {
   const { logout } = useStore();
   const [orders, setOrders] = useState<DbOrder[]>([]);
@@ -38,31 +65,55 @@ const KitchenDashboard = () => {
   const [cancelDialogOrder, setCancelDialogOrder] = useState<DbOrder | null>(null);
   const [cancelReason, setCancelReason] = useState('');
   const [cancellingId, setCancellingId] = useState<string | null>(null);
+  const [modifiedOrderIds, setModifiedOrderIds] = useState<Set<string>>(new Set());
   const prevOrderCount = useRef(0);
+  const orderFingerprintsRef = useRef<Map<string, string>>(new Map());
 
   const loadOrders = useCallback(async () => {
     try {
       const data = await fetchOrders();
+      const prevFingerprints = orderFingerprintsRef.current;
+      const newFingerprints = new Map<string, string>();
+
+      // Detect modified PREPARING orders
+      const newlyModified: string[] = [];
+      data.forEach((order) => {
+        const fp = orderFingerprint(order);
+        newFingerprints.set(order.id, fp);
+
+        if (
+          order.status === 'PREPARING' &&
+          prevFingerprints.has(order.id) &&
+          prevFingerprints.get(order.id) !== fp
+        ) {
+          newlyModified.push(order.id);
+        }
+      });
+
+      if (newlyModified.length > 0) {
+        const modifiedOrders = data.filter((o) => newlyModified.includes(o.id));
+        modifiedOrders.forEach((o) => {
+          toast.warning(
+            `⚠️ Order for Table ${o.table_number} was MODIFIED by customer!`,
+            { duration: 10000, id: `mod-${o.id}` }
+          );
+        });
+        setModifiedOrderIds((prev) => {
+          const next = new Set(prev);
+          newlyModified.forEach((id) => next.add(id));
+          return next;
+        });
+        playNotificationSound(600, 900);
+      }
+
+      orderFingerprintsRef.current = newFingerprints;
       setOrders(data);
 
+      // New order detection
       const newCount = data.filter((o) => o.status === 'NEW').length;
       if (newCount > prevOrderCount.current && prevOrderCount.current > 0) {
         toast.info(`🔔 New order received!`, { duration: 5000 });
-        try {
-          const ctx = new AudioContext();
-          const osc = ctx.createOscillator();
-          const gain = ctx.createGain();
-          osc.connect(gain); gain.connect(ctx.destination);
-          osc.frequency.value = 800; gain.gain.value = 0.3;
-          osc.start(); osc.stop(ctx.currentTime + 0.15);
-          setTimeout(() => {
-            const osc2 = ctx.createOscillator();
-            const gain2 = ctx.createGain();
-            osc2.connect(gain2); gain2.connect(ctx.destination);
-            osc2.frequency.value = 1000; gain2.gain.value = 0.3;
-            osc2.start(); osc2.stop(ctx.currentTime + 0.15);
-          }, 180);
-        } catch {}
+        playNotificationSound(800, 1000);
       }
       prevOrderCount.current = newCount;
     } catch {}
@@ -253,11 +304,32 @@ const KitchenDashboard = () => {
         )}
         {displayed.map((order) => {
           const action = getActionButton(order.status);
+          const isModified = modifiedOrderIds.has(order.id);
           return (
             <div
               key={order.id}
-              className={`bg-card rounded-lg border p-4 animate-slide-up ${order.status === 'NEW' ? 'border-warning/50 shadow-md' : ''}`}
+              className={`bg-card rounded-lg border p-4 animate-slide-up ${order.status === 'NEW' ? 'border-warning/50 shadow-md' : ''} ${isModified ? 'border-orange-500 ring-2 ring-orange-400/50 shadow-lg' : ''}`}
             >
+              {/* Modified banner */}
+              {isModified && (
+                <div className="flex items-center justify-between bg-orange-500/10 border border-orange-500/30 rounded-md px-3 py-2 mb-3 -mt-1">
+                  <span className="text-sm font-semibold text-orange-600 flex items-center gap-1.5">
+                    ⚠️ Customer modified this order — review updated items
+                  </span>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-6 text-xs text-orange-600 hover:text-orange-700"
+                    onClick={() => setModifiedOrderIds((prev) => {
+                      const next = new Set(prev);
+                      next.delete(order.id);
+                      return next;
+                    })}
+                  >
+                    Dismiss
+                  </Button>
+                </div>
+              )}
               <div className="flex items-center justify-between mb-3">
                 <div className="flex items-center gap-2">
                   {order.status === 'NEW' && <BellRing className="h-4 w-4 text-warning animate-bounce" />}
@@ -266,7 +338,10 @@ const KitchenDashboard = () => {
                     {new Date(order.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                   </span>
                 </div>
-                <Badge variant="outline" className={statusColors[order.status]}>{order.status}</Badge>
+                <div className="flex items-center gap-1.5">
+                  {isModified && <Badge variant="outline" className="bg-orange-500/10 text-orange-600 border-orange-500/30 text-[10px]">MODIFIED</Badge>}
+                  <Badge variant="outline" className={statusColors[order.status]}>{order.status}</Badge>
+                </div>
               </div>
               <div className="space-y-1 mb-3">
                 {order.items?.map((item) => (

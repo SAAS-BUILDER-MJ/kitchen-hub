@@ -30,6 +30,33 @@ interface DishGroup {
   orders: { orderId: string; tableNumber: number; quantity: number }[];
 }
 
+// Build a fingerprint of an order's items for change detection
+const orderFingerprint = (order: DbOrder): string => {
+  const items = (order.items || [])
+    .map((i) => `${i.menu_item_id}:${i.quantity}:${i.notes || ''}`)
+    .sort()
+    .join('|');
+  return `${items}::${order.total_price}`;
+};
+
+const playNotificationSound = (frequency1: number, frequency2: number) => {
+  try {
+    const ctx = new AudioContext();
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.connect(gain); gain.connect(ctx.destination);
+    osc.frequency.value = frequency1; gain.gain.value = 0.3;
+    osc.start(); osc.stop(ctx.currentTime + 0.15);
+    setTimeout(() => {
+      const osc2 = ctx.createOscillator();
+      const gain2 = ctx.createGain();
+      osc2.connect(gain2); gain2.connect(ctx.destination);
+      osc2.frequency.value = frequency2; gain2.gain.value = 0.3;
+      osc2.start(); osc2.stop(ctx.currentTime + 0.15);
+    }, 180);
+  } catch {}
+};
+
 const KitchenDashboard = () => {
   const { logout } = useStore();
   const [orders, setOrders] = useState<DbOrder[]>([]);
@@ -38,31 +65,55 @@ const KitchenDashboard = () => {
   const [cancelDialogOrder, setCancelDialogOrder] = useState<DbOrder | null>(null);
   const [cancelReason, setCancelReason] = useState('');
   const [cancellingId, setCancellingId] = useState<string | null>(null);
+  const [modifiedOrderIds, setModifiedOrderIds] = useState<Set<string>>(new Set());
   const prevOrderCount = useRef(0);
+  const orderFingerprintsRef = useRef<Map<string, string>>(new Map());
 
   const loadOrders = useCallback(async () => {
     try {
       const data = await fetchOrders();
+      const prevFingerprints = orderFingerprintsRef.current;
+      const newFingerprints = new Map<string, string>();
+
+      // Detect modified PREPARING orders
+      const newlyModified: string[] = [];
+      data.forEach((order) => {
+        const fp = orderFingerprint(order);
+        newFingerprints.set(order.id, fp);
+
+        if (
+          order.status === 'PREPARING' &&
+          prevFingerprints.has(order.id) &&
+          prevFingerprints.get(order.id) !== fp
+        ) {
+          newlyModified.push(order.id);
+        }
+      });
+
+      if (newlyModified.length > 0) {
+        const modifiedOrders = data.filter((o) => newlyModified.includes(o.id));
+        modifiedOrders.forEach((o) => {
+          toast.warning(
+            `⚠️ Order for Table ${o.table_number} was MODIFIED by customer!`,
+            { duration: 10000, id: `mod-${o.id}` }
+          );
+        });
+        setModifiedOrderIds((prev) => {
+          const next = new Set(prev);
+          newlyModified.forEach((id) => next.add(id));
+          return next;
+        });
+        playNotificationSound(600, 900);
+      }
+
+      orderFingerprintsRef.current = newFingerprints;
       setOrders(data);
 
+      // New order detection
       const newCount = data.filter((o) => o.status === 'NEW').length;
       if (newCount > prevOrderCount.current && prevOrderCount.current > 0) {
         toast.info(`🔔 New order received!`, { duration: 5000 });
-        try {
-          const ctx = new AudioContext();
-          const osc = ctx.createOscillator();
-          const gain = ctx.createGain();
-          osc.connect(gain); gain.connect(ctx.destination);
-          osc.frequency.value = 800; gain.gain.value = 0.3;
-          osc.start(); osc.stop(ctx.currentTime + 0.15);
-          setTimeout(() => {
-            const osc2 = ctx.createOscillator();
-            const gain2 = ctx.createGain();
-            osc2.connect(gain2); gain2.connect(ctx.destination);
-            osc2.frequency.value = 1000; gain2.gain.value = 0.3;
-            osc2.start(); osc2.stop(ctx.currentTime + 0.15);
-          }, 180);
-        } catch {}
+        playNotificationSound(800, 1000);
       }
       prevOrderCount.current = newCount;
     } catch {}

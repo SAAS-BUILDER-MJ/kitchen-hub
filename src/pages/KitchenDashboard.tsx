@@ -304,11 +304,32 @@ const KitchenDashboard = () => {
         )}
         {displayed.map((order) => {
           const action = getActionButton(order.status);
+          const isModified = modifiedOrderIds.has(order.id);
           return (
             <div
               key={order.id}
-              className={`bg-card rounded-lg border p-4 animate-slide-up ${order.status === 'NEW' ? 'border-warning/50 shadow-md' : ''}`}
+              className={`bg-card rounded-lg border p-4 animate-slide-up ${order.status === 'NEW' ? 'border-warning/50 shadow-md' : ''} ${isModified ? 'border-orange-500 ring-2 ring-orange-400/50 shadow-lg' : ''}`}
             >
+              {/* Modified banner */}
+              {isModified && (
+                <div className="flex items-center justify-between bg-orange-500/10 border border-orange-500/30 rounded-md px-3 py-2 mb-3 -mt-1">
+                  <span className="text-sm font-semibold text-orange-600 flex items-center gap-1.5">
+                    ⚠️ Customer modified this order — review updated items
+                  </span>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-6 text-xs text-orange-600 hover:text-orange-700"
+                    onClick={() => setModifiedOrderIds((prev) => {
+                      const next = new Set(prev);
+                      next.delete(order.id);
+                      return next;
+                    })}
+                  >
+                    Dismiss
+                  </Button>
+                </div>
+              )}
               <div className="flex items-center justify-between mb-3">
                 <div className="flex items-center gap-2">
                   {order.status === 'NEW' && <BellRing className="h-4 w-4 text-warning animate-bounce" />}
@@ -317,7 +338,10 @@ const KitchenDashboard = () => {
                     {new Date(order.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                   </span>
                 </div>
-                <Badge variant="outline" className={statusColors[order.status]}>{order.status}</Badge>
+                <div className="flex items-center gap-1.5">
+                  {isModified && <Badge variant="outline" className="bg-orange-500/10 text-orange-600 border-orange-500/30 text-[10px]">MODIFIED</Badge>}
+                  <Badge variant="outline" className={statusColors[order.status]}>{order.status}</Badge>
+                </div>
               </div>
               <div className="space-y-1 mb-3">
                 {order.items?.map((item) => (

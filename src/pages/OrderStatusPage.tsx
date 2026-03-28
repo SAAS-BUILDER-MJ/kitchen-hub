@@ -2,7 +2,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useState, useEffect } from 'react';
 import { useStore, OrderStatus } from '@/store/useStore';
 import { fetchOrder, subscribeToOrder, DbOrder } from '@/lib/supabase-api';
-import { ArrowLeft, Clock, ChefHat, CheckCircle2, UtensilsCrossed, XCircle } from 'lucide-react';
+import { ArrowLeft, Clock, ChefHat, CheckCircle2, UtensilsCrossed, XCircle, Pencil } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 const statusConfig: Record<OrderStatus, { icon: React.ReactNode; label: string; color: string; description: string }> = {
@@ -123,6 +123,17 @@ const OrderStatusPage = () => {
         <p className="text-center text-xs text-muted-foreground mt-6">
           This page updates automatically in real-time.
         </p>
+
+        {!isCancelled && (order.status === 'NEW' || order.status === 'PREPARING') && (
+          <Button
+            variant="secondary"
+            className="w-full mt-4 gap-2"
+            onClick={() => navigate(`/modify-order/${order.id}`)}
+          >
+            <Pencil className="h-4 w-4" />
+            Modify Order
+          </Button>
+        )}
 
         <Button variant="outline" className="w-full mt-4" onClick={() => navigate(`/menu?table=${tableNumber}`)}>
           Back to Menu

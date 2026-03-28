@@ -2,7 +2,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useState, useEffect, useCallback } from 'react';
 import { useStore } from '@/store/useStore';
 import { fetchOrder, cancelOrder, subscribeToOrder, DbOrder } from '@/lib/supabase-api';
-import { CheckCircle2, XCircle } from 'lucide-react';
+import { CheckCircle2, XCircle, Pencil } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 
@@ -131,6 +131,16 @@ const OrderConfirmation = () => {
         )}
 
         <div className="space-y-3">
+          {!isCancelled && (order.status === 'NEW' || order.status === 'PREPARING') && (
+            <Button
+              variant="secondary"
+              className="w-full gap-2"
+              onClick={() => navigate(`/modify-order/${order.id}`)}
+            >
+              <Pencil className="h-4 w-4" />
+              Modify Order
+            </Button>
+          )}
           {!isCancelled && (
             <Button className="w-full" onClick={() => navigate(`/order-status/${order.id}`)}>
               Track Order

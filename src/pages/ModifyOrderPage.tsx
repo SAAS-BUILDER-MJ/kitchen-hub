@@ -142,7 +142,8 @@ const ModifyOrderPage = () => {
   const total = items.reduce((s, i) => s + i.price * i.quantity, 0);
 
   const handleSave = async () => {
-    if (!orderId || !tableId || items.length === 0) {
+    const resolvedTableId = order?.table_id || tableId;
+    if (!orderId || !resolvedTableId || items.length === 0) {
       toast.error(items.length === 0 ? 'Order must have at least one item' : 'Missing table context');
       return;
     }

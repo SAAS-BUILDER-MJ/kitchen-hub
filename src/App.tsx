@@ -55,6 +55,7 @@ const App = () => (
             <Route path="/cart" element={<CartPage />} />
             <Route path="/order-confirmation/:orderId" element={<OrderConfirmation />} />
             <Route path="/order-status/:orderId" element={<OrderStatusPage />} />
+            <Route path="/modify-order/:orderId" element={<ModifyOrderPage />} />
             <Route path="/login" element={<LoginPage />} />
             <Route path="/kitchen" element={<ProtectedRoute role="chef"><KitchenDashboard /></ProtectedRoute>} />
             <Route path="/admin" element={<ProtectedRoute role="admin"><AdminDashboard /></ProtectedRoute>} />

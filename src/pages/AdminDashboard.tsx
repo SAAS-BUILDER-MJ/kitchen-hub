@@ -4,17 +4,19 @@ import {
   fetchMenuItems, fetchCategories, fetchOrders,
   DbMenuItem, DbOrder, DEMO_RESTAURANT_ID,
 } from '@/lib/supabase-api';
-import { LogOut, LayoutDashboard, QrCode } from 'lucide-react';
+import { LogOut, LayoutDashboard, QrCode, Table2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import AdminDateFilter, { DateRange, getDateRange } from '@/components/admin/AdminDateFilter';
 import AdminOverviewTab from '@/components/admin/AdminOverviewTab';
 import AdminOrdersTab from '@/components/admin/AdminOrdersTab';
 import AdminMenuTab from '@/components/admin/AdminMenuTab';
 import AdminQrTab from '@/components/admin/AdminQrTab';
+import AdminTablesTab from '@/components/admin/AdminTablesTab';
 
 const AdminDashboard = () => {
-  const { logout } = useStore();
-  const [tab, setTab] = useState<'overview' | 'orders' | 'menu' | 'qr'>('overview');
+  const { logout, auth } = useStore();
+  const restaurantId = auth.userRestaurantId || DEMO_RESTAURANT_ID;
+  const [tab, setTab] = useState<'overview' | 'orders' | 'menu' | 'tables' | 'qr'>('overview');
   const [menuItems, setMenuItems] = useState<DbMenuItem[]>([]);
   const [categories, setCategories] = useState<{ id: string; name: string }[]>([]);
   const [allOrders, setAllOrders] = useState<DbOrder[]>([]);
@@ -24,7 +26,7 @@ const AdminDashboard = () => {
   const loadData = useCallback(async () => {
     try {
       const [items, cats, ords] = await Promise.all([
-        fetchMenuItems(), fetchCategories(), fetchOrders(),
+        fetchMenuItems(restaurantId), fetchCategories(restaurantId), fetchOrders(restaurantId),
       ]);
       setMenuItems(items);
       setCategories(cats);
@@ -62,7 +64,7 @@ const AdminDashboard = () => {
       <div className="max-w-5xl mx-auto px-4 py-3 space-y-3">
         {/* Tab switcher */}
         <div className="flex gap-2 overflow-x-auto">
-          {(['overview', 'orders', 'menu', 'qr'] as const).map((t) => (
+          {(['overview', 'orders', 'menu', 'tables', 'qr'] as const).map((t) => (
             <button
               key={t}
               onClick={() => setTab(t)}
@@ -71,6 +73,7 @@ const AdminDashboard = () => {
               }`}
             >
               {t === 'qr' && <QrCode className="h-3.5 w-3.5" />}
+              {t === 'tables' && <Table2 className="h-3.5 w-3.5" />}
               {t === 'qr' ? 'QR Codes' : t}
             </button>
           ))}
@@ -100,6 +103,7 @@ const AdminDashboard = () => {
             setMenuItems={setMenuItems}
           />
         )}
+        {tab === 'tables' && <AdminTablesTab restaurantId={restaurantId} />}
         {tab === 'qr' && <AdminQrTab />}
       </div>
     </div>

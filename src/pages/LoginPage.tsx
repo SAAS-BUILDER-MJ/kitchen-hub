@@ -88,9 +88,11 @@ const LoginPage = () => {
           </Button>
         </form>
 
-        <div className="mt-6 p-3 bg-muted rounded-lg text-xs text-muted-foreground space-y-1">
-          <p className="font-medium">Staff accounts need to be created in Lovable Cloud → Users.</p>
-          <p>After creating a user, assign them a role (chef/admin) in the user_roles table.</p>
+        <div className="mt-6 p-3 bg-muted rounded-lg text-xs text-muted-foreground space-y-2">
+          <p className="font-medium">New restaurant owner?</p>
+          <Button variant="outline" size="sm" className="w-full" onClick={() => navigate('/signup')}>
+            Create Restaurant Account
+          </Button>
         </div>
       </div>
     </div>

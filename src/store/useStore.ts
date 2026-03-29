@@ -17,6 +17,7 @@ interface AuthState {
   role: 'chef' | 'admin' | null;
   isAuthenticated: boolean;
   userId: string | null;
+  userRestaurantId: string | null;
 }
 
 interface AppStore {
@@ -98,7 +99,7 @@ export const useStore = create<AppStore>((set, get) => ({
   setTableId: (id) => set({ tableId: id }),
   setRestaurantId: (id) => set({ restaurantId: id }),
 
-  auth: { role: null, isAuthenticated: false, userId: null },
+  auth: { role: null, isAuthenticated: false, userId: null, userRestaurantId: null },
 
   login: async (email, password) => {
     const { data, error } = await supabase.auth.signInWithPassword({ email, password });
@@ -106,32 +107,34 @@ export const useStore = create<AppStore>((set, get) => ({
 
     const { data: roles } = await supabase
       .from('user_roles')
-      .select('role')
+      .select('role, restaurant_id')
       .eq('user_id', data.user.id);
 
     const role = roles?.[0]?.role as 'chef' | 'admin' | null;
-    set({ auth: { role, isAuthenticated: true, userId: data.user.id } });
+    const userRestaurantId = (roles?.[0] as any)?.restaurant_id || null;
+    set({ auth: { role, isAuthenticated: true, userId: data.user.id, userRestaurantId } });
     return true;
   },
 
   logout: async () => {
     await supabase.auth.signOut();
-    set({ auth: { role: null, isAuthenticated: false, userId: null } });
+    set({ auth: { role: null, isAuthenticated: false, userId: null, userRestaurantId: null } });
   },
 
   checkAuth: async () => {
     const { data: { session } } = await supabase.auth.getSession();
     if (!session?.user) {
-      set({ auth: { role: null, isAuthenticated: false, userId: null } });
+      set({ auth: { role: null, isAuthenticated: false, userId: null, userRestaurantId: null } });
       return;
     }
     const { data: roles } = await supabase
       .from('user_roles')
-      .select('role')
+      .select('role, restaurant_id')
       .eq('user_id', session.user.id);
 
     const role = roles?.[0]?.role as 'chef' | 'admin' | null;
-    set({ auth: { role, isAuthenticated: true, userId: session.user.id } });
+    const userRestaurantId = (roles?.[0] as any)?.restaurant_id || null;
+    set({ auth: { role, isAuthenticated: true, userId: session.user.id, userRestaurantId } });
   },
 
   newOrderCount: 0,

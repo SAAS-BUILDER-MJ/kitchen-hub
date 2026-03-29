@@ -58,7 +58,8 @@ const playNotificationSound = (frequency1: number, frequency2: number) => {
 };
 
 const KitchenDashboard = () => {
-  const { logout } = useStore();
+  const { logout, auth } = useStore();
+  const restaurantId = auth.userRestaurantId || DEMO_RESTAURANT_ID;
   const [orders, setOrders] = useState<DbOrder[]>([]);
   const [filter, setFilter] = useState<OrderStatus | 'ALL'>('ALL');
   const [showDishGrouping, setShowDishGrouping] = useState(false);
@@ -71,7 +72,7 @@ const KitchenDashboard = () => {
 
   const loadOrders = useCallback(async () => {
     try {
-      const data = await fetchOrders();
+      const data = await fetchOrders(restaurantId);
       const prevFingerprints = orderFingerprintsRef.current;
       const newFingerprints = new Map<string, string>();
 

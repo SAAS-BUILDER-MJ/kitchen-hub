@@ -17,6 +17,8 @@ import LoginPage from "./pages/LoginPage";
 import NotFound from "./pages/NotFound";
 import PRDDownload from "./pages/PRDDownload";
 import ModifyOrderPage from "./pages/ModifyOrderPage";
+import SignupPage from "./pages/SignupPage";
+import SetupWizard from "./pages/SetupWizard";
 
 const queryClient = new QueryClient();
 
@@ -57,6 +59,8 @@ const App = () => (
             <Route path="/order-status/:orderId" element={<OrderStatusPage />} />
             <Route path="/modify-order/:orderId" element={<ModifyOrderPage />} />
             <Route path="/login" element={<LoginPage />} />
+            <Route path="/signup" element={<SignupPage />} />
+            <Route path="/setup" element={<SetupWizard />} />
             <Route path="/kitchen" element={<ProtectedRoute role="chef"><KitchenDashboard /></ProtectedRoute>} />
             <Route path="/admin" element={<ProtectedRoute role="admin"><AdminDashboard /></ProtectedRoute>} />
             <Route path="/prd" element={<PRDDownload />} />

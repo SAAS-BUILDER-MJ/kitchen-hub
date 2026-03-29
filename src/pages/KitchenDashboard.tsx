@@ -123,7 +123,7 @@ const KitchenDashboard = () => {
   useEffect(() => { loadOrders(); }, [loadOrders]);
 
   useEffect(() => {
-    const unsub = subscribeToOrders(DEMO_RESTAURANT_ID, loadOrders);
+    const unsub = subscribeToOrders(restaurantId, loadOrders);
     return unsub;
   }, [loadOrders]);
 

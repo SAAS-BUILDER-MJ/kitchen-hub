@@ -1,9 +1,9 @@
 import { useNavigate } from 'react-router-dom';
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { useStore } from '@/store/useStore';
-import { placeOrder as placeOrderApi } from '@/lib/supabase-api';
+import { placeOrder as placeOrderApi, generateIdempotencyKey } from '@/lib/supabase-api';
 import { saveOrderForTracking } from '@/components/customer/OrderTracker';
-import { ArrowLeft, Minus, Plus, Trash2, MessageSquare } from 'lucide-react';
+import { ArrowLeft, Minus, Plus, Trash2, MessageSquare, AlertTriangle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { toast } from 'sonner';
@@ -13,8 +13,28 @@ const CartPage = () => {
   const { cart, tableNumber, tableId, restaurantId, updateQuantity, updateItemNotes, clearCart } = useStore();
   const [placing, setPlacing] = useState(false);
   const [expandedNotes, setExpandedNotes] = useState<Set<string>>(new Set());
+  // Idempotency key to prevent duplicate orders on double-click
+  const idempotencyKeyRef = useRef<string | null>(null);
 
   const total = cart.reduce((s, c) => s + c.price * c.quantity, 0);
+
+  // SECURITY: Block access if no tableId (must come from QR scan)
+  if (!tableId) {
+    return (
+      <div className="min-h-screen bg-background flex flex-col items-center justify-center p-6">
+        <div className="max-w-sm w-full text-center space-y-4">
+          <div className="mx-auto w-16 h-16 rounded-full bg-warning/10 flex items-center justify-center">
+            <AlertTriangle className="h-8 w-8 text-warning" />
+          </div>
+          <h1 className="text-xl font-bold">Session Expired</h1>
+          <p className="text-muted-foreground text-sm">
+            Your session has expired. Please scan the QR code on your table to start a new order.
+          </p>
+          <Button onClick={() => navigate('/')}>Go Home</Button>
+        </div>
+      </div>
+    );
+  }
 
   const toggleNotes = (id: string) => {
     setExpandedNotes((prev) => {
@@ -29,6 +49,12 @@ const CartPage = () => {
       toast.error('Table not found. Please scan the QR code again.');
       return;
     }
+
+    // Prevent double-click: generate key only once per order attempt
+    if (!idempotencyKeyRef.current) {
+      idempotencyKeyRef.current = generateIdempotencyKey();
+    }
+
     setPlacing(true);
     try {
       const order = await placeOrderApi(
@@ -41,13 +67,20 @@ const CartPage = () => {
           quantity: c.quantity,
           price: c.price,
           notes: c.notes || null,
-        }))
+        })),
+        idempotencyKeyRef.current
       );
       saveOrderForTracking(order.id, tableNumber);
       clearCart();
+      idempotencyKeyRef.current = null; // Reset for next order
       navigate(`/order-confirmation/${order.id}`);
-    } catch (err) {
-      toast.error('Failed to place order. Please try again.');
+    } catch (err: any) {
+      // If rate limited, show specific message
+      if (err?.message?.includes('Too many orders')) {
+        toast.error('Too many orders. Please wait a moment before trying again.');
+      } else {
+        toast.error(err?.message || 'Failed to place order. Please try again.');
+      }
     } finally {
       setPlacing(false);
     }

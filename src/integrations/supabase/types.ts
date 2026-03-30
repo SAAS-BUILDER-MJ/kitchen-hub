@@ -163,6 +163,7 @@ export type Database = {
           cancelled_by: string | null
           created_at: string
           id: string
+          idempotency_key: string | null
           restaurant_id: string
           status: Database["public"]["Enums"]["order_status"]
           table_id: string
@@ -175,6 +176,7 @@ export type Database = {
           cancelled_by?: string | null
           created_at?: string
           id?: string
+          idempotency_key?: string | null
           restaurant_id: string
           status?: Database["public"]["Enums"]["order_status"]
           table_id: string
@@ -187,6 +189,7 @@ export type Database = {
           cancelled_by?: string | null
           created_at?: string
           id?: string
+          idempotency_key?: string | null
           restaurant_id?: string
           status?: Database["public"]["Enums"]["order_status"]
           table_id?: string

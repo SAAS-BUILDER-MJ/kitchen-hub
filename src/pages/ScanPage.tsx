@@ -10,7 +10,7 @@ type ScanState = 'loading' | 'error' | 'inactive' | 'not-found';
 const ScanPage = () => {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
-  const { setTableNumber, setTableId, setRestaurantId } = useStore();
+  const { setTableNumber, setTableId, setRestaurantId, clearCart } = useStore();
   const [state, setState] = useState<ScanState>('loading');
   const [errorMessage, setErrorMessage] = useState('');
 
@@ -24,6 +24,9 @@ const ScanPage = () => {
     }
 
     let cancelled = false;
+
+    // SECURITY: Clear previous session on every new QR scan
+    clearCart();
 
     resolveQrCode(qrCode)
       .then((result: QrResolution | null) => {
@@ -54,7 +57,7 @@ const ScanPage = () => {
       });
 
     return () => { cancelled = true; };
-  }, [qrCode, navigate, setTableNumber, setTableId, setRestaurantId]);
+  }, [qrCode, navigate, setTableNumber, setTableId, setRestaurantId, clearCart]);
 
   if (state === 'loading') {
     return (

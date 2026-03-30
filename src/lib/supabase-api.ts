@@ -142,41 +142,41 @@ export async function fetchTable(restaurantId: string, tableNumber: number) {
 }
 
 // ---- Orders ----
+
+/** Generate a unique idempotency key for an order */
+export function generateIdempotencyKey(): string {
+  return `${Date.now()}-${crypto.randomUUID()}`;
+}
+
+/**
+ * Place an order via the server-side edge function.
+ * Server validates prices, table ownership, and restaurant match.
+ * Client-sent prices/names are IGNORED — server uses DB values.
+ */
 export async function placeOrder(
   restaurantId: string,
   tableId: string,
-  tableNumber: number,
-  items: { menu_item_id: string; name: string; quantity: number; price: number; notes?: string | null }[]
+  _tableNumber: number, // unused — server resolves from tableId
+  items: { menu_item_id: string; name: string; quantity: number; price: number; notes?: string | null }[],
+  idempotencyKey?: string
 ) {
-  const totalPrice = items.reduce((sum, i) => sum + i.price * i.quantity, 0);
-
-  const { data: order, error: orderError } = await supabase
-    .from('orders')
-    .insert({
+  const { data, error } = await supabase.functions.invoke('place-order', {
+    body: {
       restaurant_id: restaurantId,
       table_id: tableId,
-      table_number: tableNumber,
-      total_price: totalPrice,
-    })
-    .select()
-    .single();
-  if (orderError) throw orderError;
+      items: items.map((i) => ({
+        menu_item_id: i.menu_item_id,
+        quantity: i.quantity,
+        notes: i.notes || null,
+      })),
+      idempotency_key: idempotencyKey || generateIdempotencyKey(),
+    },
+  });
 
-  const orderItems = items.map((i) => ({
-    order_id: order.id,
-    menu_item_id: i.menu_item_id,
-    name: i.name,
-    quantity: i.quantity,
-    price: i.price,
-    notes: i.notes || null,
-  }));
+  if (error) throw error;
+  if (data?.error) throw new Error(data.error);
 
-  const { error: itemsError } = await supabase
-    .from('order_items')
-    .insert(orderItems);
-  if (itemsError) throw itemsError;
-
-  return order;
+  return data.order as DbOrder;
 }
 
 export async function fetchOrders(restaurantId: string = DEMO_RESTAURANT_ID) {

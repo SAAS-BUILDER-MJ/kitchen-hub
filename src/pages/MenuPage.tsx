@@ -2,7 +2,7 @@ import { useSearchParams, useNavigate } from 'react-router-dom';
 import { useEffect, useState } from 'react';
 import { useStore } from '@/store/useStore';
 import { fetchMenuItems, fetchCategories, fetchTable, DbMenuItem } from '@/lib/supabase-api';
-import { ShoppingCart, Plus, Minus, Search, X } from 'lucide-react';
+import { ShoppingCart, Plus, Minus, Search, X, AlertTriangle } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -19,28 +19,46 @@ const MenuPage = () => {
   const [categories, setCategories] = useState<{ id: string; name: string }[]>([]);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    const table = searchParams.get('table');
-    if (table) {
-      const num = parseInt(table, 10);
-      setTableNumber(num);
-      // Only fetch table ID if not already set by QR scan
-      if (!tableId) {
-        fetchTable(restaurantId, num)
-          .then((t) => setTableId(t.id))
-          .catch(() => {});
-      }
-    }
-  }, [searchParams, setTableNumber, setTableId, tableId, restaurantId]);
+  // SECURITY: Block access if no tableId is set (must come from QR scan)
+  const hasValidSession = !!tableId;
 
   useEffect(() => {
+    const table = searchParams.get('table');
+    if (table && tableId) {
+      // Only set table number if we already have a tableId from QR scan
+      const num = parseInt(table, 10);
+      setTableNumber(num);
+    }
+  }, [searchParams, setTableNumber, tableId]);
+
+  useEffect(() => {
+    if (!hasValidSession) return;
     Promise.all([fetchMenuItems(restaurantId), fetchCategories(restaurantId)])
       .then(([items, cats]) => {
         setMenuItems(items);
         setCategories(cats);
       })
       .finally(() => setLoading(false));
-  }, [restaurantId]);
+  }, [restaurantId, hasValidSession]);
+
+  // SECURITY: If no valid QR session, show block screen
+  if (!hasValidSession) {
+    return (
+      <div className="min-h-screen bg-background flex flex-col items-center justify-center p-6">
+        <div className="max-w-sm w-full text-center space-y-4">
+          <div className="mx-auto w-16 h-16 rounded-full bg-warning/10 flex items-center justify-center">
+            <AlertTriangle className="h-8 w-8 text-warning" />
+          </div>
+          <h1 className="text-xl font-bold">Scan QR Code First</h1>
+          <p className="text-muted-foreground text-sm">
+            Please scan the QR code on your table to access the menu. 
+            Direct URL access is not allowed for security reasons.
+          </p>
+          <Button onClick={() => navigate('/')}>Go Home</Button>
+        </div>
+      </div>
+    );
+  }
 
   const categoryNames = ['All', ...categories.map((c) => c.name)];
 

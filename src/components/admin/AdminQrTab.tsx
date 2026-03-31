@@ -33,7 +33,7 @@ const AdminQrTab = ({ restaurantId }: AdminQrTabProps) => {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [restaurantId]);
 
   useEffect(() => { loadTables(); }, [loadTables]);
 

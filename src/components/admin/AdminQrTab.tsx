@@ -27,7 +27,7 @@ const AdminQrTab = ({ restaurantId }: AdminQrTabProps) => {
 
   const loadTables = useCallback(async () => {
     try {
-      const data = await fetchTablesWithQr(DEMO_RESTAURANT_ID);
+      const data = await fetchTablesWithQr(restaurantId);
       setTables(data);
     } catch {
       toast.error('Failed to load tables');

@@ -104,7 +104,7 @@ const AdminDashboard = () => {
           />
         )}
         {tab === 'tables' && <AdminTablesTab restaurantId={restaurantId} />}
-        {tab === 'qr' && <AdminQrTab />}
+        {tab === 'qr' && <AdminQrTab restaurantId={restaurantId} />}
       </div>
     </div>
   );

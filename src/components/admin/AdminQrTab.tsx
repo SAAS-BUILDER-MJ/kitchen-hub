@@ -1,7 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { QRCodeSVG } from 'qrcode.react';
 import { fetchTablesWithQr, rotateQrCode } from '@/lib/qr-api';
-import { DEMO_RESTAURANT_ID } from '@/lib/supabase-api';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';

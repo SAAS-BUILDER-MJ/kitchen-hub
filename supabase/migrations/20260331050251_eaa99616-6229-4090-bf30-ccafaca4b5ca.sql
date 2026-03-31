@@ -1,0 +1,1 @@
+UPDATE public.tables SET qr_code = encode(extensions.gen_random_bytes(32), 'hex') WHERE qr_code IS NULL;

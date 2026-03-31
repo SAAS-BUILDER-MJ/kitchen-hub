@@ -1,7 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { QRCodeSVG } from 'qrcode.react';
 import { fetchTablesWithQr, rotateQrCode } from '@/lib/qr-api';
-import { DEMO_RESTAURANT_ID } from '@/lib/supabase-api';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -15,7 +14,11 @@ interface TableQr {
   is_active: boolean;
 }
 
-const AdminQrTab = () => {
+interface AdminQrTabProps {
+  restaurantId: string;
+}
+
+const AdminQrTab = ({ restaurantId }: AdminQrTabProps) => {
   const [tables, setTables] = useState<TableQr[]>([]);
   const [loading, setLoading] = useState(true);
   const [rotatingId, setRotatingId] = useState<string | null>(null);
@@ -23,14 +26,14 @@ const AdminQrTab = () => {
 
   const loadTables = useCallback(async () => {
     try {
-      const data = await fetchTablesWithQr(DEMO_RESTAURANT_ID);
+      const data = await fetchTablesWithQr(restaurantId);
       setTables(data);
     } catch {
       toast.error('Failed to load tables');
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [restaurantId]);
 
   useEffect(() => { loadTables(); }, [loadTables]);
 

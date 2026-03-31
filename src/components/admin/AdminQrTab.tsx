@@ -15,7 +15,11 @@ interface TableQr {
   is_active: boolean;
 }
 
-const AdminQrTab = () => {
+interface AdminQrTabProps {
+  restaurantId: string;
+}
+
+const AdminQrTab = ({ restaurantId }: AdminQrTabProps) => {
   const [tables, setTables] = useState<TableQr[]>([]);
   const [loading, setLoading] = useState(true);
   const [rotatingId, setRotatingId] = useState<string | null>(null);

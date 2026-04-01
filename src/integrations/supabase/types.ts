@@ -334,6 +334,10 @@ export type Database = {
         }
         Returns: boolean
       }
+      is_order_participant: {
+        Args: { order_row: Database["public"]["Tables"]["orders"]["Row"] }
+        Returns: boolean
+      }
       resolve_qr: {
         Args: { _qr_code: string }
         Returns: {

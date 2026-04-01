@@ -210,17 +210,17 @@ export async function updateOrderStatus(orderId: string, status: OrderStatus) {
   if (error) throw error;
 }
 
-/** Cancel an order — customer (grace period) or staff (with reason) */
+/** Cancel an order via server-side edge function (enforces grace period + permissions) */
 export async function cancelOrder(orderId: string, cancelledBy: 'customer' | 'staff', reason?: string) {
-  const { error } = await supabase
-    .from('orders')
-    .update({
-      status: 'CANCELLED' as any,
+  const { data, error } = await supabase.functions.invoke('cancel-order', {
+    body: {
+      order_id: orderId,
       cancelled_by: cancelledBy,
-      cancel_reason: reason || null,
-    })
-    .eq('id', orderId);
+      reason: reason || null,
+    },
+  });
   if (error) throw error;
+  if (data?.error) throw new Error(data.error);
 }
 
 // ---- Realtime ----

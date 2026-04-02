@@ -48,7 +48,7 @@ export interface DbOrderItem {
 export async function fetchMenuItems(restaurantId: string = DEMO_RESTAURANT_ID) {
   const { data, error } = await supabase
     .from('menu_items')
-    .select('*, menu_categories!menu_items_category_id_fkey(name)')
+    .select('*, menu_categories(name)')
     .eq('restaurant_id', restaurantId)
     .eq('is_deleted', false)
     .order('name');

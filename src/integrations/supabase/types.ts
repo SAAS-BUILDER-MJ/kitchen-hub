@@ -38,6 +38,13 @@ export type Database = {
         }
         Relationships: [
           {
+            foreignKeyName: "fk_menu_categories_restaurant"
+            columns: ["restaurant_id"]
+            isOneToOne: false
+            referencedRelation: "restaurants"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "menu_categories_restaurant_id_fkey"
             columns: ["restaurant_id"]
             isOneToOne: false
@@ -94,6 +101,20 @@ export type Database = {
         }
         Relationships: [
           {
+            foreignKeyName: "fk_menu_items_category"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "menu_categories"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_menu_items_restaurant"
+            columns: ["restaurant_id"]
+            isOneToOne: false
+            referencedRelation: "restaurants"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "menu_items_category_id_fkey"
             columns: ["category_id"]
             isOneToOne: false
@@ -141,6 +162,20 @@ export type Database = {
           quantity?: number
         }
         Relationships: [
+          {
+            foreignKeyName: "fk_order_items_menu_item"
+            columns: ["menu_item_id"]
+            isOneToOne: false
+            referencedRelation: "menu_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_order_items_order"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "order_items_menu_item_id_fkey"
             columns: ["menu_item_id"]
@@ -198,6 +233,20 @@ export type Database = {
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "fk_orders_restaurant"
+            columns: ["restaurant_id"]
+            isOneToOne: false
+            referencedRelation: "restaurants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_orders_table"
+            columns: ["table_id"]
+            isOneToOne: false
+            referencedRelation: "tables"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "orders_restaurant_id_fkey"
             columns: ["restaurant_id"]
@@ -274,6 +323,13 @@ export type Database = {
         }
         Relationships: [
           {
+            foreignKeyName: "fk_tables_restaurant"
+            columns: ["restaurant_id"]
+            isOneToOne: false
+            referencedRelation: "restaurants"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "tables_restaurant_id_fkey"
             columns: ["restaurant_id"]
             isOneToOne: false
@@ -306,6 +362,13 @@ export type Database = {
         }
         Relationships: [
           {
+            foreignKeyName: "fk_user_roles_restaurant"
+            columns: ["restaurant_id"]
+            isOneToOne: false
+            referencedRelation: "restaurants"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "user_roles_restaurant_id_fkey"
             columns: ["restaurant_id"]
             isOneToOne: false
@@ -337,6 +400,17 @@ export type Database = {
       is_order_participant: {
         Args: { order_row: Database["public"]["Tables"]["orders"]["Row"] }
         Returns: boolean
+      }
+      place_order_tx: {
+        Args: {
+          _idempotency_key?: string
+          _items?: string
+          _restaurant_id: string
+          _table_id: string
+          _table_number: number
+          _total_price: number
+        }
+        Returns: Json
       }
       resolve_qr: {
         Args: { _qr_code: string }

@@ -6,22 +6,6 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
-// Simple in-memory rate limiter (per-instance; resets on cold start)
-const rateLimitMap = new Map<string, { count: number; resetAt: number }>();
-const RATE_LIMIT_WINDOW_MS = 60_000; // 1 minute
-const RATE_LIMIT_MAX = 5; // max 5 orders per minute per table
-
-function isRateLimited(key: string): boolean {
-  const now = Date.now();
-  const entry = rateLimitMap.get(key);
-  if (!entry || now > entry.resetAt) {
-    rateLimitMap.set(key, { count: 1, resetAt: now + RATE_LIMIT_WINDOW_MS });
-    return false;
-  }
-  entry.count++;
-  return entry.count > RATE_LIMIT_MAX;
-}
-
 interface OrderItem {
   menu_item_id: string;
   quantity: number;
@@ -85,30 +69,17 @@ Deno.serve(async (req) => {
       }
     }
 
-    // ── Rate limiting (per table) ──────────────────────────────────
-    if (isRateLimited(table_id)) {
-      return new Response(JSON.stringify({ error: "Too many orders. Please wait a moment before trying again." }), {
-        status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-
     // ── Idempotency check ──────────────────────────────────────────
     if (idempotency_key && typeof idempotency_key === "string") {
       const { data: existingOrder } = await supabase
         .from("orders")
-        .select("id, status, total_price")
+        .select("*, order_items(*)")
         .eq("idempotency_key", idempotency_key)
         .maybeSingle();
 
       if (existingOrder) {
-        // Return existing order (duplicate submission)
-        const { data: fullOrder } = await supabase
-          .from("orders")
-          .select("*, order_items(*)")
-          .eq("id", existingOrder.id)
-          .single();
         return new Response(JSON.stringify({
-          order: fullOrder ? { ...fullOrder, items: fullOrder.order_items || [] } : existingOrder,
+          order: { ...existingOrder, items: existingOrder.order_items || [] },
           duplicate: true,
         }), {
           status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -135,7 +106,7 @@ Deno.serve(async (req) => {
       });
     }
 
-    // ── Validate all menu items: exist, belong to restaurant, available, get real prices ─
+    // ── Validate all menu items: exist, belong to restaurant, available ─
     const menuItemIds = [...new Set(items.map((i) => i.menu_item_id))];
     const { data: menuItems, error: menuError } = await supabase
       .from("menu_items")
@@ -151,11 +122,10 @@ Deno.serve(async (req) => {
 
     const menuMap = new Map((menuItems || []).map((m: any) => [m.id, m]));
 
-    // Check every requested item
     for (const item of items) {
       const menuItem = menuMap.get(item.menu_item_id);
       if (!menuItem) {
-        return new Response(JSON.stringify({ error: `Menu item not found or doesn't belong to this restaurant: ${item.menu_item_id}` }), {
+        return new Response(JSON.stringify({ error: `Menu item not found: ${item.menu_item_id}` }), {
           status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
@@ -166,13 +136,13 @@ Deno.serve(async (req) => {
       }
     }
 
-    // ── Calculate total from SERVER-SIDE prices (never trust client) ─
+    // ── Build items array with SERVER-SIDE prices ──────────────────
     const orderItems = items.map((item) => {
       const menuItem = menuMap.get(item.menu_item_id)!;
       return {
         menu_item_id: item.menu_item_id,
-        name: menuItem.name,           // Use DB name, not client name
-        price: Number(menuItem.price), // Use DB price, not client price
+        name: menuItem.name,
+        price: Number(menuItem.price),
         quantity: item.quantity,
         notes: item.notes?.trim() || null,
       };
@@ -180,26 +150,19 @@ Deno.serve(async (req) => {
 
     const totalPrice = orderItems.reduce((sum, i) => sum + i.price * i.quantity, 0);
 
-    // ── Create order ───────────────────────────────────────────────
-    const insertData: any = {
-      restaurant_id,
-      table_id,
-      table_number: table.table_number,
-      total_price: totalPrice,
-    };
-    if (idempotency_key) {
-      insertData.idempotency_key = idempotency_key;
-    }
+    // ── ATOMIC order creation via DB function (transaction) ────────
+    const { data: orderResult, error: txError } = await supabase.rpc("place_order_tx", {
+      _restaurant_id: restaurant_id,
+      _table_id: table_id,
+      _table_number: table.table_number,
+      _total_price: totalPrice,
+      _idempotency_key: idempotency_key || null,
+      _items: JSON.stringify(orderItems),
+    });
 
-    const { data: order, error: orderError } = await supabase
-      .from("orders")
-      .insert(insertData)
-      .select()
-      .single();
-
-    if (orderError) {
-      // Handle unique constraint on idempotency_key (race condition)
-      if (orderError.code === "23505" && idempotency_key) {
+    if (txError) {
+      // Handle idempotency unique constraint race condition
+      if (txError.code === "23505" && idempotency_key) {
         const { data: existingOrder } = await supabase
           .from("orders")
           .select("*, order_items(*)")
@@ -214,38 +177,17 @@ Deno.serve(async (req) => {
           });
         }
       }
+      console.error("place_order_tx error:", txError);
       return new Response(JSON.stringify({ error: "Failed to create order" }), {
         status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    // ── Insert order items ─────────────────────────────────────────
-    const orderItemRows = orderItems.map((i) => ({
-      order_id: order.id,
-      ...i,
-    }));
-
-    const { error: itemsError } = await supabase
-      .from("order_items")
-      .insert(orderItemRows);
-
-    if (itemsError) {
-      // Rollback order
-      await supabase.from("orders").delete().eq("id", order.id);
-      return new Response(JSON.stringify({ error: "Failed to create order items" }), {
-        status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-
-    return new Response(JSON.stringify({
-      order: {
-        ...order,
-        items: orderItemRows,
-      },
-    }), {
+    return new Response(JSON.stringify({ order: orderResult }), {
       status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (err) {
+    console.error("Unhandled error:", err);
     return new Response(JSON.stringify({ error: "Internal server error" }), {
       status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
     });

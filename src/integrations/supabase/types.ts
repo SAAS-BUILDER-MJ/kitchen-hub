@@ -401,29 +401,17 @@ export type Database = {
         Args: { order_row: Database["public"]["Tables"]["orders"]["Row"] }
         Returns: boolean
       }
-      place_order_tx:
-        | {
-            Args: {
-              _idempotency_key?: string
-              _items?: Json
-              _restaurant_id: string
-              _table_id: string
-              _table_number: number
-              _total_price: number
-            }
-            Returns: Json
-          }
-        | {
-            Args: {
-              _idempotency_key?: string
-              _items?: string
-              _restaurant_id: string
-              _table_id: string
-              _table_number: number
-              _total_price: number
-            }
-            Returns: Json
-          }
+      place_order_tx: {
+        Args: {
+          _idempotency_key?: string
+          _items?: string
+          _restaurant_id: string
+          _table_id: string
+          _table_number: number
+          _total_price: number
+        }
+        Returns: Json
+      }
       resolve_qr: {
         Args: { _qr_code: string }
         Returns: {

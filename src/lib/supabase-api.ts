@@ -179,12 +179,28 @@ export async function placeOrder(
   return data.order as DbOrder;
 }
 
-export async function fetchOrders(restaurantId: string = DEMO_RESTAURANT_ID) {
-  const { data, error } = await supabase
+export async function fetchOrders(
+  restaurantId: string = DEMO_RESTAURANT_ID,
+  options?: { from?: string; to?: string; limit?: number; offset?: number }
+) {
+  let query = supabase
     .from('orders')
     .select('*, order_items(*)')
     .eq('restaurant_id', restaurantId)
     .order('created_at', { ascending: false });
+
+  if (options?.from) {
+    query = query.gte('created_at', options.from);
+  }
+  if (options?.to) {
+    query = query.lte('created_at', options.to);
+  }
+
+  const limit = options?.limit || 200;
+  const offset = options?.offset || 0;
+  query = query.range(offset, offset + limit - 1);
+
+  const { data, error } = await query;
   if (error) throw error;
   return (data || []).map((o: any) => ({
     ...o,

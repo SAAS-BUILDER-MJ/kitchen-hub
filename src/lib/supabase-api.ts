@@ -63,7 +63,7 @@ export async function fetchMenuItems(restaurantId: string = DEMO_RESTAURANT_ID) 
 export async function fetchAllMenuItems(restaurantId: string = DEMO_RESTAURANT_ID) {
   const { data, error } = await supabase
     .from('menu_items')
-    .select('*, menu_categories(name)')
+    .select('*, menu_categories!menu_items_category_id_fkey(name)')
     .eq('restaurant_id', restaurantId)
     .order('name');
   if (error) throw error;

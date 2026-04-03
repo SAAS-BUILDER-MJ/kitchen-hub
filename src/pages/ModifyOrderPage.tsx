@@ -164,9 +164,7 @@ const ModifyOrderPage = () => {
             table_id: resolvedTableId,
             items: items.map((i) => ({
               menu_item_id: i.menu_item_id,
-              name: i.name,
               quantity: i.quantity,
-              price: i.price,
               notes: i.notes || null,
             })),
           }),

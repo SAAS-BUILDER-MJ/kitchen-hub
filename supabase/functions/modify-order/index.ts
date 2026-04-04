@@ -84,6 +84,7 @@ Deno.serve(async (req) => {
       _order_id: order_id,
       _table_id: table_id,
       _items: JSON.stringify(itemsPayload),
+      _expected_updated_at: expected_updated_at || null,
     });
 
     if (rpcError) {

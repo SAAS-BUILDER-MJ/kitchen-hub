@@ -40,6 +40,7 @@ interface AppStore {
   login: (email: string, password: string) => Promise<boolean>;
   logout: () => Promise<void>;
   checkAuth: () => Promise<void>;
+  initAuthListener: () => { data: { subscription: { unsubscribe: () => void } } };
 
   // Notifications
   newOrderCount: number;

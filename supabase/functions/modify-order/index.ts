@@ -16,6 +16,7 @@ interface ModifyRequest {
   order_id: string;
   table_id: string;
   items: ModifyItem[];
+  expected_updated_at?: string | null;
 }
 
 Deno.serve(async (req) => {

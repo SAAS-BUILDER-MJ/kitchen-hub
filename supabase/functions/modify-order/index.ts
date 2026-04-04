@@ -16,6 +16,7 @@ interface ModifyRequest {
   order_id: string;
   table_id: string;
   items: ModifyItem[];
+  expected_updated_at?: string | null;
 }
 
 Deno.serve(async (req) => {
@@ -29,7 +30,7 @@ Deno.serve(async (req) => {
     const supabase = createClient(supabaseUrl, serviceRoleKey);
 
     const body: ModifyRequest = await req.json();
-    const { order_id, table_id, items } = body;
+    const { order_id, table_id, items, expected_updated_at } = body;
 
     // Basic input validation
     if (!order_id || typeof order_id !== "string") {
@@ -83,6 +84,7 @@ Deno.serve(async (req) => {
       _order_id: order_id,
       _table_id: table_id,
       _items: JSON.stringify(itemsPayload),
+      _expected_updated_at: expected_updated_at || null,
     });
 
     if (rpcError) {

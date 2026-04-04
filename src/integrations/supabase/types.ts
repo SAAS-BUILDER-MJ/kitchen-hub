@@ -338,10 +338,20 @@ export type Database = {
         Args: { order_row: Database["public"]["Tables"]["orders"]["Row"] }
         Returns: boolean
       }
-      modify_order_tx: {
-        Args: { _items?: string; _order_id: string; _table_id: string }
-        Returns: Json
-      }
+      modify_order_tx:
+        | {
+            Args: { _items?: string; _order_id: string; _table_id: string }
+            Returns: Json
+          }
+        | {
+            Args: {
+              _expected_updated_at?: string
+              _items?: string
+              _order_id: string
+              _table_id: string
+            }
+            Returns: Json
+          }
       place_order_tx: {
         Args: {
           _idempotency_key?: string

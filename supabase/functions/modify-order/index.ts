@@ -30,7 +30,7 @@ Deno.serve(async (req) => {
     const supabase = createClient(supabaseUrl, serviceRoleKey);
 
     const body: ModifyRequest = await req.json();
-    const { order_id, table_id, items } = body;
+    const { order_id, table_id, items, expected_updated_at } = body;
 
     // Basic input validation
     if (!order_id || typeof order_id !== "string") {

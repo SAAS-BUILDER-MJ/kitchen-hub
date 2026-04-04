@@ -162,6 +162,7 @@ const ModifyOrderPage = () => {
           body: JSON.stringify({
             order_id: orderId,
             table_id: resolvedTableId,
+            expected_updated_at: order?.updated_at || null,
             items: items.map((i) => ({
               menu_item_id: i.menu_item_id,
               quantity: i.quantity,

@@ -38,8 +38,12 @@ const StaffRouter = () => {
 };
 
 const AuthInit = ({ children }: { children: React.ReactNode }) => {
-  const { checkAuth } = useStore();
-  useEffect(() => { checkAuth(); }, [checkAuth]);
+  const { checkAuth, initAuthListener } = useStore();
+  useEffect(() => {
+    checkAuth();
+    const { data: { subscription } } = initAuthListener();
+    return () => subscription.unsubscribe();
+  }, [checkAuth, initAuthListener]);
   return <>{children}</>;
 };
 

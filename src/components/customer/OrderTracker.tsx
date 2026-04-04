@@ -71,6 +71,7 @@ interface OrderTrackerProps {
 
 export default function OrderTracker({ tableNumber }: OrderTrackerProps) {
   const navigate = useNavigate();
+  const restaurantId = useStore((s) => s.restaurantId);
   const [orders, setOrders] = useState<DbOrder[]>([]);
   const [isOpen, setIsOpen] = useState(false);
   const [loading, setLoading] = useState(false);

@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { persist } from 'zustand/middleware';
 import { supabase } from '@/integrations/supabase/client';
 
 export type OrderStatus = 'NEW' | 'PREPARING' | 'READY' | 'SERVED' | 'CANCELLED';
@@ -21,7 +22,7 @@ interface AuthState {
 }
 
 interface AppStore {
-  // Cart (client-side only)
+  // Cart
   cart: CartItem[];
   tableNumber: number;
   tableId: string | null;
@@ -35,8 +36,9 @@ interface AppStore {
   setTableId: (id: string) => void;
   setRestaurantId: (id: string) => void;
 
-  // Auth
+  // Auth (not persisted)
   auth: AuthState;
+  authLoading: boolean;
   login: (email: string, password: string) => Promise<boolean>;
   logout: () => Promise<void>;
   checkAuth: () => Promise<void>;
@@ -50,113 +52,127 @@ interface AppStore {
 
 const DEMO_RESTAURANT_ID = 'a0000000-0000-0000-0000-000000000001';
 
-export const useStore = create<AppStore>((set, get) => ({
-  cart: [],
-  tableNumber: 1,
-  tableId: null,
-  restaurantId: DEMO_RESTAURANT_ID,
+export const useStore = create<AppStore>()(
+  persist(
+    (set, get) => ({
+      cart: [],
+      tableNumber: 1,
+      tableId: null,
+      restaurantId: DEMO_RESTAURANT_ID,
 
-  addToCart: (item) =>
-    set((state) => {
-      const existing = state.cart.find((c) => c.id === item.id);
-      if (existing) {
-        return {
-          cart: state.cart.map((c) =>
-            c.id === item.id ? { ...c, quantity: c.quantity + 1 } : c
-          ),
-        };
-      }
-      return {
-        cart: [...state.cart, {
-          id: item.id,
-          menu_item_id: item.id,
-          name: item.name,
-          price: item.price,
-          emoji: item.emoji || '🍽️',
-          quantity: 1,
-          notes: '',
-        }],
-      };
-    }),
+      addToCart: (item) =>
+        set((state) => {
+          const existing = state.cart.find((c) => c.id === item.id);
+          if (existing) {
+            return {
+              cart: state.cart.map((c) =>
+                c.id === item.id ? { ...c, quantity: c.quantity + 1 } : c
+              ),
+            };
+          }
+          return {
+            cart: [...state.cart, {
+              id: item.id,
+              menu_item_id: item.id,
+              name: item.name,
+              price: item.price,
+              emoji: item.emoji || '🍽️',
+              quantity: 1,
+              notes: '',
+            }],
+          };
+        }),
 
-  removeFromCart: (itemId) =>
-    set((state) => ({ cart: state.cart.filter((c) => c.id !== itemId) })),
+      removeFromCart: (itemId) =>
+        set((state) => ({ cart: state.cart.filter((c) => c.id !== itemId) })),
 
-  updateQuantity: (itemId, quantity) =>
-    set((state) => {
-      if (quantity <= 0) return { cart: state.cart.filter((c) => c.id !== itemId) };
-      return {
-        cart: state.cart.map((c) => (c.id === itemId ? { ...c, quantity } : c)),
-      };
-    }),
+      updateQuantity: (itemId, quantity) =>
+        set((state) => {
+          if (quantity <= 0) return { cart: state.cart.filter((c) => c.id !== itemId) };
+          return {
+            cart: state.cart.map((c) => (c.id === itemId ? { ...c, quantity } : c)),
+          };
+        }),
 
-  updateItemNotes: (itemId, notes) =>
-    set((state) => ({
-      cart: state.cart.map((c) => (c.id === itemId ? { ...c, notes } : c)),
-    })),
+      updateItemNotes: (itemId, notes) =>
+        set((state) => ({
+          cart: state.cart.map((c) => (c.id === itemId ? { ...c, notes } : c)),
+        })),
 
-  clearCart: () => set({ cart: [] }),
-  setTableNumber: (table) => set({ tableNumber: table }),
-  setTableId: (id) => set({ tableId: id }),
-  setRestaurantId: (id) => set({ restaurantId: id }),
+      clearCart: () => set({ cart: [] }),
+      setTableNumber: (table) => set({ tableNumber: table }),
+      setTableId: (id) => set({ tableId: id }),
+      setRestaurantId: (id) => set({ restaurantId: id }),
 
-  auth: { role: null, isAuthenticated: false, userId: null, userRestaurantId: null },
+      auth: { role: null, isAuthenticated: false, userId: null, userRestaurantId: null },
+      authLoading: true,
 
-  login: async (email, password) => {
-    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
-    if (error || !data.user) return false;
+      login: async (email, password) => {
+        const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+        if (error || !data.user) return false;
 
-    const { data: roles } = await supabase
-      .from('user_roles')
-      .select('role, restaurant_id')
-      .eq('user_id', data.user.id);
+        const { data: roles } = await supabase
+          .from('user_roles')
+          .select('role, restaurant_id')
+          .eq('user_id', data.user.id);
 
-    const role = roles?.[0]?.role as 'chef' | 'admin' | null;
-    const userRestaurantId = (roles?.[0] as any)?.restaurant_id || null;
-    set({ auth: { role, isAuthenticated: true, userId: data.user.id, userRestaurantId } });
-    return true;
-  },
+        const role = roles?.[0]?.role as 'chef' | 'admin' | null;
+        const userRestaurantId = (roles?.[0] as any)?.restaurant_id || null;
+        set({ auth: { role, isAuthenticated: true, userId: data.user.id, userRestaurantId } });
+        return true;
+      },
 
-  logout: async () => {
-    await supabase.auth.signOut();
-    set({ auth: { role: null, isAuthenticated: false, userId: null, userRestaurantId: null } });
-  },
-
-  checkAuth: async () => {
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session?.user) {
-      set({ auth: { role: null, isAuthenticated: false, userId: null, userRestaurantId: null } });
-      return;
-    }
-    const { data: roles } = await supabase
-      .from('user_roles')
-      .select('role, restaurant_id')
-      .eq('user_id', session.user.id);
-
-    const role = roles?.[0]?.role as 'chef' | 'admin' | null;
-    const userRestaurantId = (roles?.[0] as any)?.restaurant_id || null;
-    set({ auth: { role, isAuthenticated: true, userId: session.user.id, userRestaurantId } });
-  },
-
-  initAuthListener: () => {
-    return supabase.auth.onAuthStateChange(async (event, session) => {
-      if (event === 'SIGNED_OUT' || !session?.user) {
+      logout: async () => {
+        await supabase.auth.signOut();
         set({ auth: { role: null, isAuthenticated: false, userId: null, userRestaurantId: null } });
-        return;
-      }
-      if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
+      },
+
+      checkAuth: async () => {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session?.user) {
+          set({ auth: { role: null, isAuthenticated: false, userId: null, userRestaurantId: null }, authLoading: false });
+          return;
+        }
         const { data: roles } = await supabase
           .from('user_roles')
           .select('role, restaurant_id')
           .eq('user_id', session.user.id);
+
         const role = roles?.[0]?.role as 'chef' | 'admin' | null;
         const userRestaurantId = (roles?.[0] as any)?.restaurant_id || null;
-        set({ auth: { role, isAuthenticated: true, userId: session.user.id, userRestaurantId } });
-      }
-    });
-  },
+        set({ auth: { role, isAuthenticated: true, userId: session.user.id, userRestaurantId }, authLoading: false });
+      },
 
-  newOrderCount: 0,
-  incrementNewOrderCount: () => set((state) => ({ newOrderCount: state.newOrderCount + 1 })),
-  resetNewOrderCount: () => set({ newOrderCount: 0 }),
-}));
+      initAuthListener: () => {
+        return supabase.auth.onAuthStateChange(async (event, session) => {
+          if (event === 'SIGNED_OUT' || !session?.user) {
+            set({ auth: { role: null, isAuthenticated: false, userId: null, userRestaurantId: null }, authLoading: false });
+            return;
+          }
+          if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
+            const { data: roles } = await supabase
+              .from('user_roles')
+              .select('role, restaurant_id')
+              .eq('user_id', session.user.id);
+            const role = roles?.[0]?.role as 'chef' | 'admin' | null;
+            const userRestaurantId = (roles?.[0] as any)?.restaurant_id || null;
+            set({ auth: { role, isAuthenticated: true, userId: session.user.id, userRestaurantId }, authLoading: false });
+          }
+        });
+      },
+
+      newOrderCount: 0,
+      incrementNewOrderCount: () => set((state) => ({ newOrderCount: state.newOrderCount + 1 })),
+      resetNewOrderCount: () => set({ newOrderCount: 0 }),
+    }),
+    {
+      name: 'kitchen-hub-store',
+      partialize: (state) => ({
+        cart: state.cart,
+        tableNumber: state.tableNumber,
+        tableId: state.tableId,
+        restaurantId: state.restaurantId,
+      }),
+    }
+  )
+);

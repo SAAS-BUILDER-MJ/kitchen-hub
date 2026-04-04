@@ -4,7 +4,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { Clock, ChefHat, CheckCircle2, XCircle, ClipboardList, X } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { DbOrder, subscribeToOrders, DEMO_RESTAURANT_ID } from '@/lib/supabase-api';
+import { DbOrder, subscribeToOrders } from '@/lib/supabase-api';
+import { useStore } from '@/store/useStore';
 
 const ORDER_STORAGE_KEY = 'customer_order_ids';
 
@@ -70,6 +71,7 @@ interface OrderTrackerProps {
 
 export default function OrderTracker({ tableNumber }: OrderTrackerProps) {
   const navigate = useNavigate();
+  const restaurantId = useStore((s) => s.restaurantId);
   const [orders, setOrders] = useState<DbOrder[]>([]);
   const [isOpen, setIsOpen] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -115,9 +117,9 @@ export default function OrderTracker({ tableNumber }: OrderTrackerProps) {
 
   // Real-time updates
   useEffect(() => {
-    const unsub = subscribeToOrders(DEMO_RESTAURANT_ID, loadOrders);
+    const unsub = subscribeToOrders(restaurantId, loadOrders);
     return unsub;
-  }, []);
+  }, [restaurantId]);
 
   const activeCount = orders.length;
 

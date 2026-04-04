@@ -117,9 +117,9 @@ export default function OrderTracker({ tableNumber }: OrderTrackerProps) {
 
   // Real-time updates
   useEffect(() => {
-    const unsub = subscribeToOrders(DEMO_RESTAURANT_ID, loadOrders);
+    const unsub = subscribeToOrders(restaurantId, loadOrders);
     return unsub;
-  }, []);
+  }, [restaurantId]);
 
   const activeCount = orders.length;
 

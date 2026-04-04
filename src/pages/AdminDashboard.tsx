@@ -32,7 +32,7 @@ const AdminDashboard = () => {
       setCategories(cats);
       setAllOrders(ords);
     } catch {} finally { setLoading(false); }
-  }, []);
+  }, [restaurantId]);
 
   useEffect(() => { loadData(); }, [loadData]);
 

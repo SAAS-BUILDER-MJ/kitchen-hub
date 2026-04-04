@@ -118,14 +118,14 @@ const KitchenDashboard = () => {
       }
       prevOrderCount.current = newCount;
     } catch {}
-  }, []);
+  }, [restaurantId]);
 
   useEffect(() => { loadOrders(); }, [loadOrders]);
 
   useEffect(() => {
     const unsub = subscribeToOrders(restaurantId, loadOrders);
     return unsub;
-  }, [loadOrders]);
+  }, [restaurantId, loadOrders]);
 
   const handleStatusUpdate = async (orderId: string, status: OrderStatus) => {
     try {

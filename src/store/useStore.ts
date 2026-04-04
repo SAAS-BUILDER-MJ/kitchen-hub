@@ -138,6 +138,24 @@ export const useStore = create<AppStore>((set, get) => ({
     set({ auth: { role, isAuthenticated: true, userId: session.user.id, userRestaurantId } });
   },
 
+  initAuthListener: () => {
+    return supabase.auth.onAuthStateChange(async (event, session) => {
+      if (event === 'SIGNED_OUT' || !session?.user) {
+        set({ auth: { role: null, isAuthenticated: false, userId: null, userRestaurantId: null } });
+        return;
+      }
+      if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
+        const { data: roles } = await supabase
+          .from('user_roles')
+          .select('role, restaurant_id')
+          .eq('user_id', session.user.id);
+        const role = roles?.[0]?.role as 'chef' | 'admin' | null;
+        const userRestaurantId = (roles?.[0] as any)?.restaurant_id || null;
+        set({ auth: { role, isAuthenticated: true, userId: session.user.id, userRestaurantId } });
+      }
+    });
+  },
+
   newOrderCount: 0,
   incrementNewOrderCount: () => set((state) => ({ newOrderCount: state.newOrderCount + 1 })),
   resetNewOrderCount: () => set({ newOrderCount: 0 }),

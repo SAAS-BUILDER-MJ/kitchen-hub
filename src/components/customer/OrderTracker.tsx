@@ -4,7 +4,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { Clock, ChefHat, CheckCircle2, XCircle, ClipboardList, X } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { DbOrder, subscribeToOrders, DEMO_RESTAURANT_ID } from '@/lib/supabase-api';
+import { DbOrder, subscribeToOrders } from '@/lib/supabase-api';
+import { useStore } from '@/store/useStore';
 
 const ORDER_STORAGE_KEY = 'customer_order_ids';
 

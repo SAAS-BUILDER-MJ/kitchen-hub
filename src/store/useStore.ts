@@ -149,19 +149,22 @@ export const useStore = create<AppStore>()(
       },
 
       initAuthListener: () => {
-        return supabase.auth.onAuthStateChange(async (event, session) => {
+        return supabase.auth.onAuthStateChange((event, session) => {
           if (event === 'SIGNED_OUT' || !session?.user) {
             set({ auth: { role: null, isAuthenticated: false, userId: null, userRestaurantId: null }, authLoading: false });
             return;
           }
           if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
-            const { data: roles } = await supabase
+            // Fire-and-forget: never await inside onAuthStateChange to avoid deadlocks
+            supabase
               .from('user_roles')
               .select('role, restaurant_id')
-              .eq('user_id', session.user.id);
-            const role = roles?.[0]?.role as 'chef' | 'admin' | null;
-            const userRestaurantId = (roles?.[0] as any)?.restaurant_id || null;
-            set({ auth: { role, isAuthenticated: true, userId: session.user.id, userRestaurantId }, authLoading: false });
+              .eq('user_id', session.user.id)
+              .then(({ data: roles }) => {
+                const role = roles?.[0]?.role as 'chef' | 'admin' | null;
+                const userRestaurantId = (roles?.[0] as any)?.restaurant_id || null;
+                set({ auth: { role, isAuthenticated: true, userId: session.user.id, userRestaurantId }, authLoading: false });
+              });
           }
         });
       },

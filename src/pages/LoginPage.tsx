@@ -1,13 +1,12 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useStore } from '@/store/useStore';
-import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Lock } from 'lucide-react';
 
 const LoginPage = () => {
-  const { auth, checkAuth } = useStore();
+  const { auth, authLoading, login } = useStore();
   const navigate = useNavigate();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -15,46 +14,20 @@ const LoginPage = () => {
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    checkAuth();
-  }, [checkAuth]);
-
-  useEffect(() => {
-    if (auth.isAuthenticated) {
+    if (!authLoading && auth.isAuthenticated) {
       navigate(auth.role === 'chef' ? '/kitchen' : '/admin');
     }
-  }, [auth, navigate]);
+  }, [auth, authLoading, navigate]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setError('');
 
-    const { data, error: authError } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
-
-    if (authError || !data.user) {
-      setError(authError?.message || 'Invalid credentials');
-      setLoading(false);
-      return;
+    const success = await login(email, password);
+    if (!success) {
+      setError('Invalid credentials or no staff role assigned');
     }
-
-    // Check role
-    const { data: roles } = await supabase
-      .from('user_roles')
-      .select('role')
-      .eq('user_id', data.user.id);
-
-    const role = roles?.[0]?.role as 'chef' | 'admin' | null;
-    if (!role) {
-      setError('No staff role assigned to this account');
-      await supabase.auth.signOut();
-      setLoading(false);
-      return;
-    }
-
-    await checkAuth();
     setLoading(false);
   };
 

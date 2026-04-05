@@ -128,19 +128,24 @@ export const useStore = create<AppStore>()(
       },
 
       checkAuth: async () => {
-        const { data: { session } } = await supabase.auth.getSession();
-        if (!session?.user) {
-          set({ auth: { role: null, isAuthenticated: false, userId: null, userRestaurantId: null }, authLoading: false });
-          return;
-        }
-        const { data: roles } = await supabase
-          .from('user_roles')
-          .select('role, restaurant_id')
-          .eq('user_id', session.user.id);
+        try {
+          const { data: { session } } = await supabase.auth.getSession();
+          if (!session?.user) {
+            set({ auth: { role: null, isAuthenticated: false, userId: null, userRestaurantId: null }, authLoading: false });
+            return;
+          }
+          const { data: roles } = await supabase
+            .from('user_roles')
+            .select('role, restaurant_id')
+            .eq('user_id', session.user.id);
 
-        const role = roles?.[0]?.role as 'chef' | 'admin' | null;
-        const userRestaurantId = (roles?.[0] as any)?.restaurant_id || null;
-        set({ auth: { role, isAuthenticated: true, userId: session.user.id, userRestaurantId }, authLoading: false });
+          const role = roles?.[0]?.role as 'chef' | 'admin' | null;
+          const userRestaurantId = (roles?.[0] as any)?.restaurant_id || null;
+          set({ auth: { role, isAuthenticated: true, userId: session.user.id, userRestaurantId }, authLoading: false });
+        } catch (err) {
+          console.error('[checkAuth] failed:', err);
+          set({ auth: { role: null, isAuthenticated: false, userId: null, userRestaurantId: null }, authLoading: false });
+        }
       },
 
       initAuthListener: () => {

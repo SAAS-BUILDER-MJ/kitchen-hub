@@ -92,14 +92,19 @@ Deno.serve(async (req) => {
         });
       }
 
-      // Check restaurant-scoped role
-      const { data: hasRole } = await supabase.rpc("has_restaurant_role", {
+      // Check restaurant-scoped role (admin or chef can cancel)
+      const { data: isAdmin } = await supabase.rpc("has_restaurant_role", {
         _user_id: user.id,
         _role: "admin",
         _restaurant_id: order.restaurant_id,
       });
+      const { data: isChef } = await supabase.rpc("has_restaurant_role", {
+        _user_id: user.id,
+        _role: "chef",
+        _restaurant_id: order.restaurant_id,
+      });
 
-      if (!hasRole) {
+      if (!isAdmin && !isChef) {
         return new Response(JSON.stringify({ error: "Insufficient permissions" }), {
           status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" },
         });

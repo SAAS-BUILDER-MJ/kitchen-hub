@@ -111,14 +111,20 @@ export const useStore = create<AppStore>()(
         const { data, error } = await supabase.auth.signInWithPassword({ email, password });
         if (error || !data.user) return false;
 
+        // Fetch role to validate staff access (listener will also update state)
         const { data: roles } = await supabase
           .from('user_roles')
           .select('role, restaurant_id')
           .eq('user_id', data.user.id);
 
         const role = roles?.[0]?.role as 'chef' | 'admin' | null;
+        if (!role) {
+          await supabase.auth.signOut();
+          return false;
+        }
+
         const userRestaurantId = (roles?.[0] as any)?.restaurant_id || null;
-        set({ auth: { role, isAuthenticated: true, userId: data.user.id, userRestaurantId } });
+        set({ auth: { role, isAuthenticated: true, userId: data.user.id, userRestaurantId }, authLoading: false });
         return true;
       },
 

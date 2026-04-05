@@ -50,7 +50,7 @@ interface AppStore {
   resetNewOrderCount: () => void;
 }
 
-const DEMO_RESTAURANT_ID = 'a0000000-0000-0000-0000-000000000001';
+const DEMO_RESTAURANT_ID = 'b1000000-0000-0000-0000-000000000001';
 
 export const useStore = create<AppStore>()(
   persist(

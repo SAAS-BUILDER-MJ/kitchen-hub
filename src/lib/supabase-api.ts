@@ -1,7 +1,7 @@
 import { supabase } from '@/integrations/supabase/client';
 
 // Demo restaurant ID (seeded)
-export const DEMO_RESTAURANT_ID = 'a0000000-0000-0000-0000-000000000001';
+export const DEMO_RESTAURANT_ID = 'b1000000-0000-0000-0000-000000000001';
 
 export type OrderStatus = 'NEW' | 'PREPARING' | 'READY' | 'SERVED' | 'CANCELLED';
 

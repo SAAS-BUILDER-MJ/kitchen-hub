@@ -56,7 +56,7 @@ export default function AdminMenuTab({ menuItems, categories, onReload, setMenuI
         await updateMenuItemApi(editingItem.id, { name: form.name, price: form.price, description: form.description, emoji: form.emoji, category_id: form.category_id });
         toast.success(`"${form.name}" updated`);
       } else {
-        await createMenuItem({ name: form.name, price: form.price, description: form.description, emoji: form.emoji, category_id: form.category_id });
+        await createMenuItem({ name: form.name, price: form.price, description: form.description, emoji: form.emoji, category_id: form.category_id, restaurant_id: restaurantId });
         toast.success(`"${form.name}" added to menu`);
       }
       setDialogOpen(false);

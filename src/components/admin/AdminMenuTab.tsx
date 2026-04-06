@@ -21,6 +21,7 @@ interface Props {
   categories: { id: string; name: string }[];
   onReload: () => void;
   setMenuItems: React.Dispatch<React.SetStateAction<DbMenuItem[]>>;
+  restaurantId: string;
 }
 
 export default function AdminMenuTab({ menuItems, categories, onReload, setMenuItems }: Props) {

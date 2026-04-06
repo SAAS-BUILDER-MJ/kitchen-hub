@@ -24,7 +24,7 @@ interface Props {
   restaurantId: string;
 }
 
-export default function AdminMenuTab({ menuItems, categories, onReload, setMenuItems }: Props) {
+export default function AdminMenuTab({ menuItems, categories, onReload, setMenuItems, restaurantId }: Props) {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<DbMenuItem | null>(null);
   const [form, setForm] = useState(emptyForm);

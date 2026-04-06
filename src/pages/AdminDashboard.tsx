@@ -101,6 +101,7 @@ const AdminDashboard = () => {
             categories={categories}
             onReload={loadData}
             setMenuItems={setMenuItems}
+            restaurantId={restaurantId}
           />
         )}
         {tab === 'tables' && <AdminTablesTab restaurantId={restaurantId} />}

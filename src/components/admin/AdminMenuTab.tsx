@@ -21,9 +21,10 @@ interface Props {
   categories: { id: string; name: string }[];
   onReload: () => void;
   setMenuItems: React.Dispatch<React.SetStateAction<DbMenuItem[]>>;
+  restaurantId: string;
 }
 
-export default function AdminMenuTab({ menuItems, categories, onReload, setMenuItems }: Props) {
+export default function AdminMenuTab({ menuItems, categories, onReload, setMenuItems, restaurantId }: Props) {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<DbMenuItem | null>(null);
   const [form, setForm] = useState(emptyForm);
@@ -55,7 +56,7 @@ export default function AdminMenuTab({ menuItems, categories, onReload, setMenuI
         await updateMenuItemApi(editingItem.id, { name: form.name, price: form.price, description: form.description, emoji: form.emoji, category_id: form.category_id });
         toast.success(`"${form.name}" updated`);
       } else {
-        await createMenuItem({ name: form.name, price: form.price, description: form.description, emoji: form.emoji, category_id: form.category_id });
+        await createMenuItem({ name: form.name, price: form.price, description: form.description, emoji: form.emoji, category_id: form.category_id, restaurant_id: restaurantId });
         toast.success(`"${form.name}" added to menu`);
       }
       setDialogOpen(false);

@@ -52,7 +52,7 @@ const OrderConfirmation = () => {
     if (!orderId || !order || order.status !== 'NEW') return;
     setCancelling(true);
     try {
-      await cancelOrder(orderId, 'customer', 'Cancelled by customer within grace period');
+      await cancelOrder(orderId, 'customer', 'Cancelled by customer within grace period', order?.table_id);
       toast.success('Order cancelled successfully');
       loadOrder();
     } catch {

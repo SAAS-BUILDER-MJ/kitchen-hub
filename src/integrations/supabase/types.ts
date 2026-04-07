@@ -163,7 +163,6 @@ export type Database = {
           cancelled_by: string | null
           created_at: string
           id: string
-          idempotency_key: string | null
           restaurant_id: string
           status: Database["public"]["Enums"]["order_status"]
           table_id: string
@@ -176,7 +175,6 @@ export type Database = {
           cancelled_by?: string | null
           created_at?: string
           id?: string
-          idempotency_key?: string | null
           restaurant_id: string
           status?: Database["public"]["Enums"]["order_status"]
           table_id: string
@@ -189,7 +187,6 @@ export type Database = {
           cancelled_by?: string | null
           created_at?: string
           id?: string
-          idempotency_key?: string | null
           restaurant_id?: string
           status?: Database["public"]["Enums"]["order_status"]
           table_id?: string
@@ -334,46 +331,6 @@ export type Database = {
         }
         Returns: boolean
       }
-      is_order_participant: {
-        Args: { order_row: Database["public"]["Tables"]["orders"]["Row"] }
-        Returns: boolean
-      }
-      modify_order_tx:
-        | {
-            Args: { _items?: string; _order_id: string; _table_id: string }
-            Returns: Json
-          }
-        | {
-            Args: {
-              _expected_updated_at?: string
-              _items?: string
-              _order_id: string
-              _table_id: string
-            }
-            Returns: Json
-          }
-      place_order_tx: {
-        Args: {
-          _idempotency_key?: string
-          _items?: string
-          _restaurant_id: string
-          _table_id: string
-          _table_number: number
-          _total_price: number
-        }
-        Returns: Json
-      }
-      resolve_qr: {
-        Args: { _qr_code: string }
-        Returns: {
-          is_active: boolean
-          restaurant_id: string
-          restaurant_name: string
-          table_id: string
-          table_number: number
-        }[]
-      }
-      rotate_qr_code: { Args: { _table_id: string }; Returns: string }
     }
     Enums: {
       app_role: "admin" | "chef" | "user"

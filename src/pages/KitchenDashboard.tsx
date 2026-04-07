@@ -59,7 +59,7 @@ const playNotificationSound = (frequency1: number, frequency2: number) => {
 
 const KitchenDashboard = () => {
   const { logout, auth } = useStore();
-  const restaurantId = auth.userRestaurantId || DEMO_RESTAURANT_ID;
+  const restaurantId = auth.userRestaurantId || '';
   const [orders, setOrders] = useState<DbOrder[]>([]);
   const [filter, setFilter] = useState<OrderStatus | 'ALL'>('ALL');
   const [showDishGrouping, setShowDishGrouping] = useState(false);

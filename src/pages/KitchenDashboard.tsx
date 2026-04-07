@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useStore, OrderStatus } from '@/store/useStore';
-import { fetchOrders, updateOrderStatus, cancelOrder, subscribeToOrders, DbOrder, DEMO_RESTAURANT_ID } from '@/lib/supabase-api';
+import { fetchOrders, updateOrderStatus, cancelOrder, subscribeToOrders, DbOrder } from '@/lib/supabase-api';
 import { LogOut, ChefHat, Clock, CheckCircle2, BellRing, UtensilsCrossed, Layers, XCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';

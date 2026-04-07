@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useStore } from '@/store/useStore';
 import {
   fetchMenuItems, fetchCategories, fetchOrders,
-  DbMenuItem, DbOrder, DEMO_RESTAURANT_ID,
+  DbMenuItem, DbOrder,
 } from '@/lib/supabase-api';
 import { LogOut, LayoutDashboard, QrCode, Table2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';

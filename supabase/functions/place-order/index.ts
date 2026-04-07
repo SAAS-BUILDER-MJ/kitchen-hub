@@ -19,12 +19,57 @@ interface PlaceOrderRequest {
   idempotency_key?: string;
 }
 
+// ── In-memory rate limiter ──────────────────────────────────────
+// Key: IP or table_id → { count, windowStart }
+const rateLimitMap = new Map<string, { count: number; windowStart: number }>();
+const RATE_LIMIT_WINDOW_MS = 60_000; // 1 minute
+const RATE_LIMIT_MAX_PER_IP = 5; // max 5 orders per IP per minute
+const RATE_LIMIT_MAX_PER_TABLE = 3; // max 3 orders per table per minute
+
+function isRateLimited(key: string, maxRequests: number): boolean {
+  const now = Date.now();
+  const entry = rateLimitMap.get(key);
+
+  if (!entry || now - entry.windowStart > RATE_LIMIT_WINDOW_MS) {
+    rateLimitMap.set(key, { count: 1, windowStart: now });
+    return false;
+  }
+
+  entry.count++;
+  if (entry.count > maxRequests) {
+    return true;
+  }
+  return false;
+}
+
+// Periodic cleanup to prevent memory leak (every 5 minutes)
+setInterval(() => {
+  const now = Date.now();
+  for (const [key, entry] of rateLimitMap) {
+    if (now - entry.windowStart > RATE_LIMIT_WINDOW_MS * 2) {
+      rateLimitMap.delete(key);
+    }
+  }
+}, 300_000);
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
+    // ── Rate limiting by IP ──────────────────────────────────────
+    const clientIP =
+      req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
+      req.headers.get("cf-connecting-ip") ||
+      "unknown";
+
+    if (clientIP !== "unknown" && isRateLimited(`ip:${clientIP}`, RATE_LIMIT_MAX_PER_IP)) {
+      return new Response(JSON.stringify({ error: "Too many orders. Please wait a moment before trying again." }), {
+        status: 429, headers: { ...corsHeaders, "Content-Type": "application/json", "Retry-After": "60" },
+      });
+    }
+
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, serviceRoleKey);
@@ -46,6 +91,13 @@ Deno.serve(async (req) => {
     if (!Array.isArray(items) || items.length === 0 || items.length > 50) {
       return new Response(JSON.stringify({ error: "Items must be a non-empty array (max 50)" }), {
         status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // ── Rate limiting by table ─────────────────────────────────────
+    if (isRateLimited(`table:${table_id}`, RATE_LIMIT_MAX_PER_TABLE)) {
+      return new Response(JSON.stringify({ error: "Too many orders for this table. Please wait before ordering again." }), {
+        status: 429, headers: { ...corsHeaders, "Content-Type": "application/json", "Retry-After": "60" },
       });
     }
 

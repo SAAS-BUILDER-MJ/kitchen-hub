@@ -19,7 +19,7 @@ Deno.serve(async (req) => {
     const supabase = createClient(supabaseUrl, serviceRoleKey);
 
     const body = await req.json();
-    const { order_id, cancelled_by, reason } = body;
+    const { order_id, cancelled_by, reason, table_id } = body;
 
     // Input validation
     if (!order_id || typeof order_id !== "string") {
@@ -38,7 +38,7 @@ Deno.serve(async (req) => {
     // Fetch the order
     const { data: order, error: orderError } = await supabase
       .from("orders")
-      .select("id, status, created_at, restaurant_id")
+      .select("id, status, created_at, restaurant_id, table_id")
       .eq("id", order_id)
       .single();
 
@@ -55,8 +55,21 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Customer cancellations: enforce grace period + status must be NEW
+    // Customer cancellations: require table_id verification + enforce grace period + status must be NEW
     if (cancelled_by === "customer") {
+      // Require table_id as proof-of-knowledge (only someone at the table knows both order_id and table_id)
+      if (!table_id || typeof table_id !== "string") {
+        return new Response(JSON.stringify({ error: "table_id is required for customer cancellation" }), {
+          status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      if (order.table_id !== table_id) {
+        return new Response(JSON.stringify({ error: "Order not found" }), {
+          status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
       if (order.status !== "NEW") {
         return new Response(JSON.stringify({ error: "Order is already being prepared and cannot be cancelled" }), {
           status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -80,7 +93,7 @@ Deno.serve(async (req) => {
         });
       }
 
-      const anonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
+      const anonKey = Deno.env.get("SUPABASE_ANON_KEY") || Deno.env.get("SUPABASE_PUBLISHABLE_KEY")!;
       const userClient = createClient(supabaseUrl, anonKey, {
         global: { headers: { Authorization: authHeader } },
       });

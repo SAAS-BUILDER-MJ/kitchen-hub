@@ -1,8 +1,5 @@
 import { supabase } from '@/integrations/supabase/client';
 
-// Demo restaurant ID (seeded)
-export const DEMO_RESTAURANT_ID = 'b1000000-0000-0000-0000-000000000001';
-
 export type OrderStatus = 'NEW' | 'PREPARING' | 'READY' | 'SERVED' | 'CANCELLED';
 
 export interface DbMenuItem {
@@ -45,7 +42,8 @@ export interface DbOrderItem {
 }
 
 // ---- Menu ----
-export async function fetchMenuItems(restaurantId: string = DEMO_RESTAURANT_ID) {
+export async function fetchMenuItems(restaurantId: string) {
+  if (!restaurantId) throw new Error('restaurantId is required');
   const { data, error } = await supabase
     .from('menu_items')
     .select('*, menu_categories!menu_items_category_id_fkey(name)')
@@ -60,7 +58,8 @@ export async function fetchMenuItems(restaurantId: string = DEMO_RESTAURANT_ID) 
 }
 
 /** Fetch ALL menu items including soft-deleted (for admin/analytics) */
-export async function fetchAllMenuItems(restaurantId: string = DEMO_RESTAURANT_ID) {
+export async function fetchAllMenuItems(restaurantId: string) {
+  if (!restaurantId) throw new Error('restaurantId is required');
   const { data, error } = await supabase
     .from('menu_items')
     .select('*, menu_categories!menu_items_category_id_fkey(name)')
@@ -73,7 +72,8 @@ export async function fetchAllMenuItems(restaurantId: string = DEMO_RESTAURANT_I
   })) as DbMenuItem[];
 }
 
-export async function fetchCategories(restaurantId: string = DEMO_RESTAURANT_ID) {
+export async function fetchCategories(restaurantId: string) {
+  if (!restaurantId) throw new Error('restaurantId is required');
   const { data, error } = await supabase
     .from('menu_categories')
     .select('*')
@@ -89,14 +89,12 @@ export async function createMenuItem(item: {
   price: number;
   emoji: string;
   category_id: string;
-  restaurant_id?: string;
+  restaurant_id: string;
 }) {
+  if (!item.restaurant_id) throw new Error('restaurant_id is required');
   const { data, error } = await supabase
     .from('menu_items')
-    .insert({
-      ...item,
-      restaurant_id: item.restaurant_id || DEMO_RESTAURANT_ID,
-    })
+    .insert(item)
     .select()
     .single();
   if (error) throw error;
@@ -180,9 +178,10 @@ export async function placeOrder(
 }
 
 export async function fetchOrders(
-  restaurantId: string = DEMO_RESTAURANT_ID,
+  restaurantId: string,
   options?: { from?: string; to?: string; limit?: number; offset?: number }
 ) {
+  if (!restaurantId) throw new Error('restaurantId is required');
   let query = supabase
     .from('orders')
     .select('*, order_items(*)')
@@ -218,21 +217,41 @@ export async function fetchOrder(orderId: string) {
   return { ...data, items: (data as any).order_items || [] } as DbOrder;
 }
 
+/**
+ * Update order status via authenticated client SDK.
+ * The DB trigger enforces valid status transitions (e.g. NEW→PREPARING only).
+ * RLS ensures only restaurant-scoped staff can update.
+ */
 export async function updateOrderStatus(orderId: string, status: OrderStatus) {
   const { error } = await supabase
     .from('orders')
     .update({ status })
     .eq('id', orderId);
-  if (error) throw error;
+  if (error) {
+    // Parse DB trigger error messages for user-friendly feedback
+    if (error.message?.includes('Invalid status transition')) {
+      throw new Error(error.message);
+    }
+    if (error.message?.includes('Cannot change status')) {
+      throw new Error(error.message);
+    }
+    throw error;
+  }
 }
 
 /** Cancel an order via server-side edge function (enforces grace period + permissions) */
-export async function cancelOrder(orderId: string, cancelledBy: 'customer' | 'staff', reason?: string) {
+export async function cancelOrder(
+  orderId: string,
+  cancelledBy: 'customer' | 'staff',
+  reason?: string,
+  tableId?: string
+) {
   const { data, error } = await supabase.functions.invoke('cancel-order', {
     body: {
       order_id: orderId,
       cancelled_by: cancelledBy,
       reason: reason || null,
+      table_id: tableId || null,
     },
   });
   if (error) throw error;

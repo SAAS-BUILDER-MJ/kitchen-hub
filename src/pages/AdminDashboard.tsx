@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useStore } from '@/store/useStore';
 import {
   fetchMenuItems, fetchCategories, fetchOrders,
-  DbMenuItem, DbOrder, DEMO_RESTAURANT_ID,
+  DbMenuItem, DbOrder,
 } from '@/lib/supabase-api';
 import { LogOut, LayoutDashboard, QrCode, Table2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -15,7 +15,7 @@ import AdminTablesTab from '@/components/admin/AdminTablesTab';
 
 const AdminDashboard = () => {
   const { logout, auth } = useStore();
-  const restaurantId = auth.userRestaurantId || DEMO_RESTAURANT_ID;
+  const restaurantId = auth.userRestaurantId || '';
   const [tab, setTab] = useState<'overview' | 'orders' | 'menu' | 'tables' | 'qr'>('overview');
   const [menuItems, setMenuItems] = useState<DbMenuItem[]>([]);
   const [categories, setCategories] = useState<{ id: string; name: string }[]>([]);

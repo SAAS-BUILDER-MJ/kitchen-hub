@@ -76,7 +76,7 @@ Deno.serve(async (req) => {
     const supabase = createClient(supabaseUrl, serviceRoleKey);
 
     const body: PlaceOrderRequest = await req.json();
-    const { restaurant_id, table_id, items, idempotency_key } = body;
+  const { restaurant_id, table_id, qr_token, items, idempotency_key } = body;
 
     // ── Input validation ──────────────────────────────────────────
     if (!restaurant_id || typeof restaurant_id !== "string") {

@@ -10,7 +10,7 @@ type ScanState = 'loading' | 'error' | 'inactive' | 'not-found';
 const ScanPage = () => {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
-  const { setTableNumber, setTableId, setRestaurantId, clearCart } = useStore();
+  const { setTableNumber, setTableId, setRestaurantId, setQrToken, clearCart } = useStore();
   const [state, setState] = useState<ScanState>('loading');
   const [errorMessage, setErrorMessage] = useState('');
 

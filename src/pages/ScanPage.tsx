@@ -48,6 +48,7 @@ const ScanPage = () => {
         setRestaurantId(result.restaurant_id);
         setTableNumber(result.table_number);
         setTableId(result.table_id);
+        setQrToken(qrCode); // Store QR token for order verification
         navigate(`/menu?table=${result.table_number}`, { replace: true });
       })
       .catch(() => {

@@ -106,6 +106,7 @@ export const useStore = create<AppStore>()(
       setTableNumber: (table) => set({ tableNumber: table }),
       setTableId: (id) => set({ tableId: id }),
       setRestaurantId: (id) => set({ restaurantId: id }),
+      setQrToken: (token) => set({ qrToken: token }),
 
       auth: { role: null, isAuthenticated: false, userId: null, userRestaurantId: null },
       authLoading: true,

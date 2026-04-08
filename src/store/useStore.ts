@@ -27,6 +27,7 @@ interface AppStore {
   tableNumber: number;
   tableId: string | null;
   restaurantId: string;
+  qrToken: string | null;
   addToCart: (item: { id: string; name: string; price: number; emoji: string | null }) => void;
   removeFromCart: (itemId: string) => void;
   updateQuantity: (itemId: string, quantity: number) => void;
@@ -35,6 +36,7 @@ interface AppStore {
   setTableNumber: (table: number) => void;
   setTableId: (id: string) => void;
   setRestaurantId: (id: string) => void;
+  setQrToken: (token: string) => void;
 
   // Auth (not persisted)
   auth: AuthState;
@@ -59,6 +61,7 @@ export const useStore = create<AppStore>()(
       tableNumber: 1,
       tableId: null,
       restaurantId: DEMO_RESTAURANT_ID,
+      qrToken: null,
 
       addToCart: (item) =>
         set((state) => {
@@ -103,6 +106,7 @@ export const useStore = create<AppStore>()(
       setTableNumber: (table) => set({ tableNumber: table }),
       setTableId: (id) => set({ tableId: id }),
       setRestaurantId: (id) => set({ restaurantId: id }),
+      setQrToken: (token) => set({ qrToken: token }),
 
       auth: { role: null, isAuthenticated: false, userId: null, userRestaurantId: null },
       authLoading: true,
@@ -186,6 +190,7 @@ export const useStore = create<AppStore>()(
         tableNumber: state.tableNumber,
         tableId: state.tableId,
         restaurantId: state.restaurantId,
+        qrToken: state.qrToken,
       }),
     }
   )

@@ -15,6 +15,7 @@ interface OrderItem {
 interface PlaceOrderRequest {
   restaurant_id: string;
   table_id: string;
+  qr_token?: string | null;
   items: OrderItem[];
   idempotency_key?: string;
 }
@@ -75,7 +76,7 @@ Deno.serve(async (req) => {
     const supabase = createClient(supabaseUrl, serviceRoleKey);
 
     const body: PlaceOrderRequest = await req.json();
-    const { restaurant_id, table_id, items, idempotency_key } = body;
+  const { restaurant_id, table_id, qr_token, items, idempotency_key } = body;
 
     // ── Input validation ──────────────────────────────────────────
     if (!restaurant_id || typeof restaurant_id !== "string") {
@@ -142,7 +143,7 @@ Deno.serve(async (req) => {
     // ── Verify table belongs to restaurant and is active ───────────
     const { data: table, error: tableError } = await supabase
       .from("tables")
-      .select("id, restaurant_id, table_number, is_active")
+      .select("id, restaurant_id, table_number, is_active, qr_code")
       .eq("id", table_id)
       .eq("restaurant_id", restaurant_id)
       .single();
@@ -156,6 +157,16 @@ Deno.serve(async (req) => {
       return new Response(JSON.stringify({ error: "This table is currently unavailable." }), {
         status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
+    }
+
+    // ── Verify QR token matches table (prevents localStorage spoofing) ──
+    if (qr_token && typeof qr_token === "string") {
+      // Verify the QR token resolves to this exact table
+      if (table.qr_code && table.qr_code !== qr_token) {
+        return new Response(JSON.stringify({ error: "Invalid table session. Please scan the QR code again." }), {
+          status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
     }
 
     // ── Validate all menu items: exist, belong to restaurant, available ─

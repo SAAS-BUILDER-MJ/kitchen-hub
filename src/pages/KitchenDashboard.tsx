@@ -1,7 +1,8 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useStore, OrderStatus } from '@/store/useStore';
-import { fetchOrders, updateOrderStatus, cancelOrder, subscribeToOrders, DbOrder } from '@/lib/supabase-api';
-import { LogOut, ChefHat, Clock, CheckCircle2, BellRing, UtensilsCrossed, Layers, XCircle } from 'lucide-react';
+import { fetchOrders, updateOrderStatus, cancelOrder, DbOrder } from '@/lib/supabase-api';
+import { subscribeToOrdersWithReconnect } from '@/lib/realtime';
+import { LogOut, ChefHat, Clock, CheckCircle2, BellRing, UtensilsCrossed, Layers, XCircle, WifiOff, Wifi } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
@@ -30,7 +31,6 @@ interface DishGroup {
   orders: { orderId: string; tableNumber: number; quantity: number }[];
 }
 
-// Build a fingerprint of an order's items for change detection
 const orderFingerprint = (order: DbOrder): string => {
   const items = (order.items || [])
     .map((i) => `${i.menu_item_id}:${i.quantity}:${i.notes || ''}`)
@@ -67,21 +67,26 @@ const KitchenDashboard = () => {
   const [cancelReason, setCancelReason] = useState('');
   const [cancellingId, setCancellingId] = useState<string | null>(null);
   const [modifiedOrderIds, setModifiedOrderIds] = useState<Set<string>>(new Set());
+  const [connectionStatus, setConnectionStatus] = useState<'connected' | 'disconnected' | 'reconnecting'>('connected');
   const prevOrderCount = useRef(0);
   const orderFingerprintsRef = useRef<Map<string, string>>(new Map());
+  const ordersRef = useRef<DbOrder[]>([]);
 
+  // Keep ref in sync
+  useEffect(() => { ordersRef.current = orders; }, [orders]);
+
+  // Full load — only on mount and reconnection
   const loadOrders = useCallback(async () => {
+    if (!restaurantId) return;
     try {
       const data = await fetchOrders(restaurantId);
       const prevFingerprints = orderFingerprintsRef.current;
       const newFingerprints = new Map<string, string>();
 
-      // Detect modified PREPARING orders
       const newlyModified: string[] = [];
       data.forEach((order) => {
         const fp = orderFingerprint(order);
         newFingerprints.set(order.id, fp);
-
         if (
           order.status === 'PREPARING' &&
           prevFingerprints.has(order.id) &&
@@ -110,7 +115,6 @@ const KitchenDashboard = () => {
       orderFingerprintsRef.current = newFingerprints;
       setOrders(data);
 
-      // New order detection
       const newCount = data.filter((o) => o.status === 'NEW').length;
       if (newCount > prevOrderCount.current && prevOrderCount.current > 0) {
         toast.info(`🔔 New order received!`, { duration: 5000 });
@@ -120,20 +124,120 @@ const KitchenDashboard = () => {
     } catch {}
   }, [restaurantId]);
 
+  // Initial load
   useEffect(() => { loadOrders(); }, [loadOrders]);
 
+  // #9 FIX: Incremental updates via realtime instead of full re-fetch
   useEffect(() => {
-    const unsub = subscribeToOrders(restaurantId, loadOrders);
+    if (!restaurantId) return;
+
+    const unsub = subscribeToOrdersWithReconnect(
+      restaurantId,
+      (payload) => {
+        if (payload.eventType === 'INSERT') {
+          // New order — add to list, fetch full order with items
+          const newOrder = payload.new as DbOrder;
+          // We need items, so do a targeted single-order fetch
+          import('@/lib/supabase-api').then(({ fetchOrder }) => {
+            fetchOrder(newOrder.id).then((fullOrder) => {
+              setOrders((prev) => {
+                // Avoid duplicates
+                if (prev.some((o) => o.id === fullOrder.id)) return prev;
+                return [fullOrder, ...prev];
+              });
+              // Notification
+              toast.info(`🔔 New order received! Table ${fullOrder.table_number}`, { duration: 5000 });
+              playNotificationSound(800, 1000);
+            }).catch(() => {
+              // Fallback: full reload
+              loadOrders();
+            });
+          });
+        } else if (payload.eventType === 'UPDATE') {
+          const updated = payload.new as DbOrder;
+          setOrders((prev) => {
+            const idx = prev.findIndex((o) => o.id === updated.id);
+            if (idx === -1) {
+              // Order not in local list — full reload
+              loadOrders();
+              return prev;
+            }
+            const existing = prev[idx];
+            // Merge: keep existing items (realtime doesn't include joins)
+            const merged: DbOrder = {
+              ...existing,
+              ...updated,
+              items: existing.items, // preserve items from previous fetch
+            };
+
+            // Detect modification of PREPARING orders
+            if (merged.status === 'PREPARING') {
+              const oldFp = orderFingerprintsRef.current.get(merged.id);
+              const newFp = orderFingerprint(merged);
+              if (oldFp && oldFp !== newFp) {
+                toast.warning(`⚠️ Order for Table ${merged.table_number} was MODIFIED!`, { duration: 10000, id: `mod-${merged.id}` });
+                setModifiedOrderIds((p) => new Set(p).add(merged.id));
+                playNotificationSound(600, 900);
+              }
+              orderFingerprintsRef.current.set(merged.id, newFp);
+            }
+
+            const next = [...prev];
+            next[idx] = merged;
+            return next;
+          });
+        }
+      },
+      {
+        onStatusChange: (status) => {
+          setConnectionStatus(status);
+          if (status === 'connected') {
+            // Sync on reconnect
+            loadOrders();
+          }
+          if (status === 'disconnected') {
+            toast.error('Connection lost. Orders may be stale.', { id: 'rt-status', duration: Infinity });
+          }
+          if (status === 'reconnecting') {
+            toast.loading('Reconnecting...', { id: 'rt-status' });
+          }
+          if (status === 'connected') {
+            toast.dismiss('rt-status');
+          }
+        },
+      }
+    );
+
     return unsub;
   }, [restaurantId, loadOrders]);
+
+  // #12 FIX: Online/offline detection
+  useEffect(() => {
+    const handleOffline = () => {
+      setConnectionStatus('disconnected');
+      toast.error('You are offline. Orders will not update.', { id: 'offline-status', duration: Infinity });
+    };
+    const handleOnline = () => {
+      toast.dismiss('offline-status');
+      setConnectionStatus('reconnecting');
+      loadOrders();
+    };
+
+    window.addEventListener('offline', handleOffline);
+    window.addEventListener('online', handleOnline);
+    return () => {
+      window.removeEventListener('offline', handleOffline);
+      window.removeEventListener('online', handleOnline);
+    };
+  }, [loadOrders]);
 
   const handleStatusUpdate = async (orderId: string, status: OrderStatus) => {
     try {
       await updateOrderStatus(orderId, status);
       setOrders((prev) => prev.map((o) => o.id === orderId ? { ...o, status } : o));
       if (status === 'SERVED') toast.success('Order marked as served');
-    } catch {
-      toast.error('Failed to update order status');
+    } catch (err: any) {
+      toast.error(err?.message || 'Failed to update order status');
     }
   };
 
@@ -153,7 +257,6 @@ const KitchenDashboard = () => {
     }
   };
 
-  // Filter out SERVED and CANCELLED orders from kitchen view
   const activeOrders = useMemo(() =>
     orders
       .filter((o) => o.status !== 'SERVED' && o.status !== 'CANCELLED')
@@ -209,7 +312,22 @@ const KitchenDashboard = () => {
 
   return (
     <div className="min-h-screen bg-background">
-      <header className="sticky top-0 z-30 bg-background/80 backdrop-blur-md border-b px-4 py-3">
+      {/* #12 FIX: Connection status banner */}
+      {connectionStatus !== 'connected' && (
+        <div className={`sticky top-0 z-50 px-4 py-2 text-center text-sm font-medium flex items-center justify-center gap-2 ${
+          connectionStatus === 'disconnected' 
+            ? 'bg-destructive text-destructive-foreground' 
+            : 'bg-warning text-warning-foreground'
+        }`}>
+          {connectionStatus === 'disconnected' ? (
+            <><WifiOff className="h-4 w-4" /> Offline — orders may be stale</>
+          ) : (
+            <><Wifi className="h-4 w-4 animate-pulse" /> Reconnecting...</>
+          )}
+        </div>
+      )}
+
+      <header className="sticky top-0 z-30 bg-background/80 backdrop-blur-md border-b px-4 py-3" style={{ top: connectionStatus !== 'connected' ? '36px' : '0' }}>
         <div className="max-w-4xl mx-auto flex items-center justify-between">
           <div className="flex items-center gap-2">
             <ChefHat className="h-5 w-5 text-primary" />
@@ -258,7 +376,6 @@ const KitchenDashboard = () => {
         ))}
       </div>
 
-      {/* Dish Grouping Panel */}
       {showDishGrouping && dishGroups.length > 0 && (
         <div className="max-w-4xl mx-auto px-4 pb-4">
           <div className="bg-primary/5 border border-primary/20 rounded-lg p-4">
@@ -311,7 +428,6 @@ const KitchenDashboard = () => {
               key={order.id}
               className={`bg-card rounded-lg border p-4 animate-slide-up ${order.status === 'NEW' ? 'border-warning/50 shadow-md' : ''} ${isModified ? 'border-orange-500 ring-2 ring-orange-400/50 shadow-lg' : ''}`}
             >
-              {/* Modified banner */}
               {isModified && (
                 <div className="flex items-center justify-between bg-orange-500/10 border border-orange-500/30 rounded-md px-3 py-2 mb-3 -mt-1">
                   <span className="text-sm font-semibold text-orange-600 flex items-center gap-1.5">
@@ -363,7 +479,6 @@ const KitchenDashboard = () => {
               <div className="flex items-center justify-between border-t pt-3">
                 <span className="font-bold text-sm">Total: ₹{order.total_price}</span>
                 <div className="flex items-center gap-2">
-                  {/* Staff cancel button */}
                   {(order.status === 'NEW' || order.status === 'PREPARING') && (
                     <Button
                       size="sm"
@@ -386,7 +501,6 @@ const KitchenDashboard = () => {
         })}
       </div>
 
-      {/* Cancel confirmation dialog */}
       <Dialog open={!!cancelDialogOrder} onOpenChange={(open) => { if (!open) setCancelDialogOrder(null); }}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>

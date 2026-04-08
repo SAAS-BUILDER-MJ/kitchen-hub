@@ -27,6 +27,7 @@ interface AppStore {
   tableNumber: number;
   tableId: string | null;
   restaurantId: string;
+  qrToken: string | null;
   addToCart: (item: { id: string; name: string; price: number; emoji: string | null }) => void;
   removeFromCart: (itemId: string) => void;
   updateQuantity: (itemId: string, quantity: number) => void;

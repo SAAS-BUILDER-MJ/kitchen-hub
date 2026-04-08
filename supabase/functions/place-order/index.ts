@@ -15,6 +15,7 @@ interface OrderItem {
 interface PlaceOrderRequest {
   restaurant_id: string;
   table_id: string;
+  qr_token?: string | null;
   items: OrderItem[];
   idempotency_key?: string;
 }

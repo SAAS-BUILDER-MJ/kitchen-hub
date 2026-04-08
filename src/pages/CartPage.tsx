@@ -68,7 +68,8 @@ const CartPage = () => {
           price: c.price,
           notes: c.notes || null,
         })),
-        idempotencyKeyRef.current
+        idempotencyKeyRef.current,
+        qrToken
       );
       saveOrderForTracking(order.id, tableNumber);
       clearCart();

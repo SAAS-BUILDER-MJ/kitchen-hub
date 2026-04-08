@@ -154,14 +154,16 @@ export function generateIdempotencyKey(): string {
 export async function placeOrder(
   restaurantId: string,
   tableId: string,
-  _tableNumber: number, // unused — server resolves from tableId
+  _tableNumber: number,
   items: { menu_item_id: string; name: string; quantity: number; price: number; notes?: string | null }[],
-  idempotencyKey?: string
+  idempotencyKey?: string,
+  qrToken?: string | null
 ) {
   const { data, error } = await supabase.functions.invoke('place-order', {
     body: {
       restaurant_id: restaurantId,
       table_id: tableId,
+      qr_token: qrToken || null,
       items: items.map((i) => ({
         menu_item_id: i.menu_item_id,
         quantity: i.quantity,

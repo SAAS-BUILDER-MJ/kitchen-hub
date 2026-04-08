@@ -36,6 +36,7 @@ interface AppStore {
   setTableNumber: (table: number) => void;
   setTableId: (id: string) => void;
   setRestaurantId: (id: string) => void;
+  setQrToken: (token: string) => void;
 
   // Auth (not persisted)
   auth: AuthState;

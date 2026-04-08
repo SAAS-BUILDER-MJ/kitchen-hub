@@ -10,7 +10,7 @@ import { toast } from 'sonner';
 
 const CartPage = () => {
   const navigate = useNavigate();
-  const { cart, tableNumber, tableId, restaurantId, updateQuantity, updateItemNotes, clearCart } = useStore();
+  const { cart, tableNumber, tableId, restaurantId, qrToken, updateQuantity, updateItemNotes, clearCart } = useStore();
   const [placing, setPlacing] = useState(false);
   const [expandedNotes, setExpandedNotes] = useState<Set<string>>(new Set());
   // Idempotency key to prevent duplicate orders on double-click

@@ -190,6 +190,7 @@ export const useStore = create<AppStore>()(
         tableNumber: state.tableNumber,
         tableId: state.tableId,
         restaurantId: state.restaurantId,
+        qrToken: state.qrToken,
       }),
     }
   )

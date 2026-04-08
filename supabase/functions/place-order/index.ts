@@ -143,7 +143,7 @@ Deno.serve(async (req) => {
     // ── Verify table belongs to restaurant and is active ───────────
     const { data: table, error: tableError } = await supabase
       .from("tables")
-      .select("id, restaurant_id, table_number, is_active")
+      .select("id, restaurant_id, table_number, is_active, qr_code")
       .eq("id", table_id)
       .eq("restaurant_id", restaurant_id)
       .single();

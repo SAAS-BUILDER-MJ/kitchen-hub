@@ -61,6 +61,7 @@ export const useStore = create<AppStore>()(
       tableNumber: 1,
       tableId: null,
       restaurantId: DEMO_RESTAURANT_ID,
+      qrToken: null,
 
       addToCart: (item) =>
         set((state) => {

@@ -159,6 +159,16 @@ Deno.serve(async (req) => {
       });
     }
 
+    // ── Verify QR token matches table (prevents localStorage spoofing) ──
+    if (qr_token && typeof qr_token === "string") {
+      // Verify the QR token resolves to this exact table
+      if (table.qr_code && table.qr_code !== qr_token) {
+        return new Response(JSON.stringify({ error: "Invalid table session. Please scan the QR code again." }), {
+          status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+    }
+
     // ── Validate all menu items: exist, belong to restaurant, available ─
     const menuItemIds = [...new Set(items.map((i) => i.menu_item_id))];
     const { data: menuItems, error: menuError } = await supabase

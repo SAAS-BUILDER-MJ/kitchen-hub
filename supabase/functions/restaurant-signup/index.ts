@@ -14,7 +14,12 @@ Deno.serve(async (req) => {
   try {
     const { restaurant_name, phone, address } = await req.json();
 
-    if (!restaurant_name || typeof restaurant_name !== "string" || restaurant_name.trim().length < 2) {
+    // Sanitize inputs — strip HTML tags
+    const cleanName = (restaurant_name || "").replace(/<[^>]*>/g, "").trim();
+    const cleanPhone = (phone || "").replace(/<[^>]*>/g, "").trim();
+    const cleanAddress = (address || "").replace(/<[^>]*>/g, "").trim();
+
+    if (!cleanName || cleanName.length < 2) {
       return new Response(JSON.stringify({ error: "Restaurant name is required (min 2 characters)" }), {
         status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
@@ -62,9 +67,9 @@ Deno.serve(async (req) => {
     const { data: restaurant, error: restError } = await adminClient
       .from("restaurants")
       .insert({
-        name: restaurant_name.trim(),
-        phone: phone?.trim() || null,
-        address: address?.trim() || null,
+        name: cleanName.substring(0, 200),
+        phone: cleanPhone.substring(0, 50) || null,
+        address: cleanAddress.substring(0, 500) || null,
       })
       .select()
       .single();

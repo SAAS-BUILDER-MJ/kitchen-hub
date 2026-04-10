@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { sanitizeField } from '@/lib/sanitize';
 import { Plus, Pencil, Trash2, X, Save } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -47,13 +48,16 @@ export default function AdminMenuTab({ menuItems, categories, onReload, setMenuI
   };
 
   const handleSave = async () => {
-    if (!form.name || !form.category_id || form.price <= 0) {
+    const cleanName = sanitizeField(form.name, 200);
+    const cleanDesc = sanitizeField(form.description, 500);
+    const cleanEmoji = sanitizeField(form.emoji, 10);
+    if (!cleanName || !form.category_id || form.price <= 0) {
       toast.error('Please fill all required fields');
       return;
     }
     try {
       if (editingItem) {
-        await updateMenuItemApi(editingItem.id, { name: form.name, price: form.price, description: form.description, emoji: form.emoji, category_id: form.category_id });
+        await updateMenuItemApi(editingItem.id, { name: cleanName, price: form.price, description: cleanDesc, emoji: cleanEmoji, category_id: form.category_id });
         toast.success(`"${form.name}" updated`);
       } else {
         await createMenuItem({ name: form.name, price: form.price, description: form.description, emoji: form.emoji, category_id: form.category_id, restaurant_id: restaurantId });

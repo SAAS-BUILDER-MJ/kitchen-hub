@@ -331,6 +331,35 @@ export type Database = {
         }
         Returns: boolean
       }
+      modify_order_tx: {
+        Args: {
+          _expected_updated_at: string
+          _items: Json
+          _order_id: string
+          _restaurant_id: string
+        }
+        Returns: Json
+      }
+      place_order_tx: {
+        Args: {
+          _idempotency_key?: string
+          _items: Json
+          _restaurant_id: string
+          _table_id: string
+          _table_number: number
+        }
+        Returns: Json
+      }
+      resolve_qr: {
+        Args: { _qr_code: string }
+        Returns: {
+          restaurant_id: string
+          restaurant_name: string
+          table_id: string
+          table_number: number
+        }[]
+      }
+      rotate_qr_code: { Args: { _table_id: string }; Returns: string }
     }
     Enums: {
       app_role: "admin" | "chef" | "user"

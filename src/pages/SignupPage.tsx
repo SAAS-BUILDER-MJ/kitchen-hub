@@ -46,7 +46,7 @@ const SignupPage = () => {
     }
 
     setLoading(true);
-    const { error: signUpError } = await supabase.auth.signUp({ email, password });
+    const { data, error: signUpError } = await supabase.auth.signUp({ email, password });
 
     if (signUpError) {
       setError(signUpError.message);
@@ -54,14 +54,22 @@ const SignupPage = () => {
       return;
     }
 
-    // Auto sign-in after signup
-    const { error: signInError } = await supabase.auth.signInWithPassword({ email, password });
-    if (signInError) {
-      setError('Account created but sign-in failed. Please go to login.');
+    // Check if email confirmation is required
+    if (data?.user?.identities?.length === 0) {
+      setError('An account with this email already exists. Please log in instead.');
       setLoading(false);
       return;
     }
 
+    if (data?.user && !data.session) {
+      // Email confirmation is required
+      toast.success('Account created! Please check your email to verify your account, then log in.');
+      setLoading(false);
+      navigate('/login');
+      return;
+    }
+
+    // If auto-confirm is on (dev mode), proceed to restaurant step
     setStep('restaurant');
     setLoading(false);
   };

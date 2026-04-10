@@ -16,7 +16,6 @@ import KitchenDashboard from "./pages/KitchenDashboard";
 import AdminDashboard from "./pages/AdminDashboard";
 import LoginPage from "./pages/LoginPage";
 import NotFound from "./pages/NotFound";
-import PRDDownload from "./pages/PRDDownload";
 import ModifyOrderPage from "./pages/ModifyOrderPage";
 import SignupPage from "./pages/SignupPage";
 import SetupWizard from "./pages/SetupWizard";
@@ -74,7 +73,7 @@ const App = () => (
             <Route path="/setup" element={<SetupWizard />} />
             <Route path="/kitchen" element={<ProtectedRoute role="chef"><ErrorBoundary fallbackTitle="Kitchen dashboard error — orders are safe"><KitchenDashboard /></ErrorBoundary></ProtectedRoute>} />
             <Route path="/admin" element={<ProtectedRoute role="admin"><ErrorBoundary fallbackTitle="Admin dashboard error"><AdminDashboard /></ErrorBoundary></ProtectedRoute>} />
-            <Route path="/prd" element={<PRDDownload />} />
+            {/* /prd route removed — not customer-facing */}
             <Route path="/dashboard" element={<StaffRouter />} />
             <Route path="*" element={<NotFound />} />
           </Routes>

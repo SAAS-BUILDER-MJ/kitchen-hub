@@ -52,15 +52,13 @@ interface AppStore {
   resetNewOrderCount: () => void;
 }
 
-const DEMO_RESTAURANT_ID = 'b1000000-0000-0000-0000-000000000001';
-
 export const useStore = create<AppStore>()(
   persist(
     (set, get) => ({
       cart: [],
       tableNumber: 1,
       tableId: null,
-      restaurantId: DEMO_RESTAURANT_ID,
+      restaurantId: '',
       qrToken: null,
 
       addToCart: (item) =>

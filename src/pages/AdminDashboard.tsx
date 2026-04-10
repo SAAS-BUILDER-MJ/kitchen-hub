@@ -12,11 +12,12 @@ import AdminOrdersTab from '@/components/admin/AdminOrdersTab';
 import AdminMenuTab from '@/components/admin/AdminMenuTab';
 import AdminQrTab from '@/components/admin/AdminQrTab';
 import AdminTablesTab from '@/components/admin/AdminTablesTab';
+import AdminStaffTab from '@/components/admin/AdminStaffTab';
 
 const AdminDashboard = () => {
   const { logout, auth } = useStore();
   const restaurantId = auth.userRestaurantId || '';
-  const [tab, setTab] = useState<'overview' | 'orders' | 'menu' | 'tables' | 'qr'>('overview');
+  const [tab, setTab] = useState<'overview' | 'orders' | 'menu' | 'tables' | 'qr' | 'staff'>('overview');
   const [menuItems, setMenuItems] = useState<DbMenuItem[]>([]);
   const [categories, setCategories] = useState<{ id: string; name: string }[]>([]);
   const [allOrders, setAllOrders] = useState<DbOrder[]>([]);
@@ -64,7 +65,7 @@ const AdminDashboard = () => {
       <div className="max-w-5xl mx-auto px-4 py-3 space-y-3">
         {/* Tab switcher */}
         <div className="flex gap-2 overflow-x-auto">
-          {(['overview', 'orders', 'menu', 'tables', 'qr'] as const).map((t) => (
+          {(['overview', 'orders', 'menu', 'tables', 'qr', 'staff'] as const).map((t) => (
             <button
               key={t}
               onClick={() => setTab(t)}
@@ -106,6 +107,7 @@ const AdminDashboard = () => {
         )}
         {tab === 'tables' && <AdminTablesTab restaurantId={restaurantId} />}
         {tab === 'qr' && <AdminQrTab restaurantId={restaurantId} />}
+        {tab === 'staff' && <AdminStaffTab restaurantId={restaurantId} />}
       </div>
     </div>
   );

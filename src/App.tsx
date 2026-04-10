@@ -16,7 +16,6 @@ import KitchenDashboard from "./pages/KitchenDashboard";
 import AdminDashboard from "./pages/AdminDashboard";
 import LoginPage from "./pages/LoginPage";
 import NotFound from "./pages/NotFound";
-import NotFound from "./pages/NotFound";
 import ModifyOrderPage from "./pages/ModifyOrderPage";
 import SignupPage from "./pages/SignupPage";
 import SetupWizard from "./pages/SetupWizard";

@@ -219,7 +219,7 @@ Deno.serve(async (req) => {
       _table_id: table_id,
       _table_number: table.table_number,
       _idempotency_key: idempotency_key || null,
-      _items: JSON.stringify(orderItems),
+      _items: orderItems,
     });
 
     if (txError) {

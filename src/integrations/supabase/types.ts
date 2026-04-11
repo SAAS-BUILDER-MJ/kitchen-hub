@@ -163,6 +163,7 @@ export type Database = {
           cancelled_by: string | null
           created_at: string
           id: string
+          idempotency_key: string | null
           restaurant_id: string
           status: Database["public"]["Enums"]["order_status"]
           table_id: string
@@ -175,6 +176,7 @@ export type Database = {
           cancelled_by?: string | null
           created_at?: string
           id?: string
+          idempotency_key?: string | null
           restaurant_id: string
           status?: Database["public"]["Enums"]["order_status"]
           table_id: string
@@ -187,6 +189,7 @@ export type Database = {
           cancelled_by?: string | null
           created_at?: string
           id?: string
+          idempotency_key?: string | null
           restaurant_id?: string
           status?: Database["public"]["Enums"]["order_status"]
           table_id?: string
@@ -331,15 +334,26 @@ export type Database = {
         }
         Returns: boolean
       }
-      modify_order_tx: {
-        Args: {
-          _expected_updated_at: string
-          _items: Json
-          _order_id: string
-          _restaurant_id: string
-        }
-        Returns: Json
-      }
+      modify_order_tx:
+        | {
+            Args: {
+              _expected_updated_at: string
+              _items: Json
+              _order_id: string
+              _restaurant_id: string
+            }
+            Returns: Json
+          }
+        | {
+            Args: {
+              _expected_updated_at: string
+              _items: Json
+              _order_id: string
+              _restaurant_id?: string
+              _table_id: string
+            }
+            Returns: Json
+          }
       place_order_tx: {
         Args: {
           _idempotency_key?: string

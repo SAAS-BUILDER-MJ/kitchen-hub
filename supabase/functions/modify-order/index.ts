@@ -43,13 +43,13 @@ Deno.serve(async (req) => {
         status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
-    if (!Array.isArray(items) || items.length === 0) {
-      return new Response(JSON.stringify({ error: "Items array is required and must not be empty" }), {
+    if (!Array.isArray(items) || items.length === 0 || items.length > 50) {
+      return new Response(JSON.stringify({ error: "Items must be a non-empty array (max 50)" }), {
         status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    // Validate each item structure (prices are NOT accepted — server looks them up)
+    // Validate each item structure
     for (const item of items) {
       if (!item.menu_item_id || typeof item.menu_item_id !== "string") {
         return new Response(JSON.stringify({ error: "Each item must have a valid menu_item_id" }), {
@@ -73,7 +73,7 @@ Deno.serve(async (req) => {
       }
     }
 
-    // Call atomic DB function — handles price lookup, validation, and modification in one transaction
+    // Call atomic DB function — handles price lookup, table verification, and modification
     const itemsPayload = items.map((i) => ({
       menu_item_id: i.menu_item_id,
       quantity: i.quantity,
@@ -83,16 +83,16 @@ Deno.serve(async (req) => {
     const { data, error: rpcError } = await supabase.rpc("modify_order_tx", {
       _order_id: order_id,
       _table_id: table_id,
-      _items: JSON.stringify(itemsPayload),
       _expected_updated_at: expected_updated_at || null,
+      _items: itemsPayload,
     });
 
     if (rpcError) {
-      // Parse Postgres exception messages for user-friendly errors
       const msg = rpcError.message || "Failed to modify order";
       const status = msg.includes("not found") ? 404
         : msg.includes("Not authorized") ? 403
         : msg.includes("cannot be modified") ? 409
+        : msg.includes("Concurrency conflict") ? 409
         : msg.includes("unavailable") ? 400
         : 500;
       return new Response(JSON.stringify({ error: msg }), {
@@ -101,10 +101,11 @@ Deno.serve(async (req) => {
     }
 
     return new Response(
-      JSON.stringify({ success: true, order: { ...data, items: data.items || [] } }),
+      JSON.stringify({ success: true, order: data }),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (err) {
+    console.error("Unhandled error:", err);
     return new Response(
       JSON.stringify({ error: "Internal server error" }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }

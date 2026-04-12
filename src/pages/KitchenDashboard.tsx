@@ -150,6 +150,7 @@ const KitchenDashboard = () => {
               // Notification
               toast.info(`🔔 New order received! Table ${fullOrder.table_number}`, { duration: 5000 });
               playNotificationSound(800, 1000);
+              notifyOrderStatusChange(fullOrder.table_number, 'NEW', fullOrder.id);
             }).catch(() => {
               // Fallback: full reload
               loadOrders();
@@ -358,6 +359,22 @@ const KitchenDashboard = () => {
                 </Badge>
               )}
             </Button>
+            {notifPermission !== 'granted' && notifPermission !== 'unsupported' && (
+              <Button
+                variant="outline"
+                size="sm"
+                className="gap-1"
+                onClick={async () => {
+                  const result = await requestNotificationPermission();
+                  setNotifPermission(result);
+                  if (result === 'granted') toast.success('Notifications enabled');
+                  else if (result === 'denied') toast.error('Notifications blocked by browser');
+                }}
+              >
+                <Bell className="h-4 w-4" />
+                <span className="hidden sm:inline">Notifications</span>
+              </Button>
+            )}
             <Button variant="ghost" size="sm" onClick={() => logout()}>
               <LogOut className="h-4 w-4 mr-1" /> Logout
             </Button>

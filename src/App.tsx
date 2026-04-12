@@ -13,6 +13,7 @@ import CartPage from "./pages/CartPage";
 import OrderConfirmation from "./pages/OrderConfirmation";
 import OrderStatusPage from "./pages/OrderStatusPage";
 import KitchenDashboard from "./pages/KitchenDashboard";
+import WaiterDashboard from "./pages/WaiterDashboard";
 import AdminDashboard from "./pages/AdminDashboard";
 import LoginPage from "./pages/LoginPage";
 import NotFound from "./pages/NotFound";
@@ -40,6 +41,7 @@ const StaffRouter = () => {
   if (!auth.isAuthenticated) return <Navigate to="/login" />;
   if (auth.role === 'chef') return <KitchenDashboard />;
   if (auth.role === 'admin') return <AdminDashboard />;
+  if (auth.role === 'waiter') return <WaiterDashboard />;
   return <Navigate to="/login" />;
 };
 
@@ -73,6 +75,7 @@ const App = () => (
             <Route path="/setup" element={<SetupWizard />} />
             <Route path="/kitchen" element={<ProtectedRoute role="chef"><ErrorBoundary fallbackTitle="Kitchen dashboard error — orders are safe"><KitchenDashboard /></ErrorBoundary></ProtectedRoute>} />
             <Route path="/admin" element={<ProtectedRoute role="admin"><ErrorBoundary fallbackTitle="Admin dashboard error"><AdminDashboard /></ErrorBoundary></ProtectedRoute>} />
+            <Route path="/waiter" element={<ProtectedRoute role="waiter"><ErrorBoundary fallbackTitle="Waiter dashboard error"><WaiterDashboard /></ErrorBoundary></ProtectedRoute>} />
             {/* /prd route removed — not customer-facing */}
             <Route path="/dashboard" element={<StaffRouter />} />
             <Route path="*" element={<NotFound />} />

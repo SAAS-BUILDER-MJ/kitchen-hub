@@ -214,6 +214,50 @@ export type Database = {
           },
         ]
       }
+      restaurant_config: {
+        Row: {
+          business_hours_close: string | null
+          business_hours_open: string | null
+          created_at: string
+          currency_symbol: string
+          id: string
+          restaurant_id: string
+          tax_rate: number
+          timezone: string
+          updated_at: string
+        }
+        Insert: {
+          business_hours_close?: string | null
+          business_hours_open?: string | null
+          created_at?: string
+          currency_symbol?: string
+          id?: string
+          restaurant_id: string
+          tax_rate?: number
+          timezone?: string
+          updated_at?: string
+        }
+        Update: {
+          business_hours_close?: string | null
+          business_hours_open?: string | null
+          created_at?: string
+          currency_symbol?: string
+          id?: string
+          restaurant_id?: string
+          tax_rate?: number
+          timezone?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "restaurant_config_restaurant_id_fkey"
+            columns: ["restaurant_id"]
+            isOneToOne: true
+            referencedRelation: "restaurants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       restaurants: {
         Row: {
           address: string | null

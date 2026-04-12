@@ -69,6 +69,7 @@ const KitchenDashboard = () => {
   const [cancellingId, setCancellingId] = useState<string | null>(null);
   const [modifiedOrderIds, setModifiedOrderIds] = useState<Set<string>>(new Set());
   const [connectionStatus, setConnectionStatus] = useState<'connected' | 'disconnected' | 'reconnecting'>('connected');
+  const [notifPermission, setNotifPermission] = useState(getNotificationPermission());
   const prevOrderCount = useRef(0);
   const orderFingerprintsRef = useRef<Map<string, string>>(new Map());
   const ordersRef = useRef<DbOrder[]>([]);

@@ -131,7 +131,11 @@ export default function AdminMenuTab({ menuItems, categories, onReload, setMenuI
             <div className="grid gap-2 sm:grid-cols-2">
               {cat.items.map((item) => (
                 <div key={item.id} className={`flex items-center gap-3 p-3 bg-card rounded-lg border ${!item.available ? 'opacity-60' : ''}`}>
-                  <span className="text-2xl">{item.emoji || '🍽️'}</span>
+                  {item.image_url ? (
+                    <img src={item.image_url} alt={item.name} className="w-10 h-10 rounded-md object-cover shrink-0" />
+                  ) : (
+                    <span className="text-2xl">{item.emoji || '🍽️'}</span>
+                  )}
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-1">
                       <h3 className="font-semibold text-sm">{item.name}</h3>
@@ -199,6 +203,31 @@ export default function AdminMenuTab({ menuItems, categories, onReload, setMenuI
             <div>
               <label className="text-sm font-medium text-foreground">Emoji Icon</label>
               <Input value={form.emoji} onChange={(e) => setForm({ ...form, emoji: e.target.value })} placeholder="🍽️" className="w-20" />
+            </div>
+            <div>
+              <label className="text-sm font-medium text-foreground">Image</label>
+              <div className="mt-1 flex items-center gap-3">
+                {form.image_url ? (
+                  <div className="relative">
+                    <img src={form.image_url} alt="Preview" className="w-16 h-16 rounded-md object-cover" />
+                    <button
+                      onClick={() => setForm({ ...form, image_url: '' })}
+                      className="absolute -top-1 -right-1 h-5 w-5 rounded-full bg-destructive text-destructive-foreground flex items-center justify-center text-xs"
+                    >×</button>
+                  </div>
+                ) : (
+                  <div className="w-16 h-16 rounded-md border-2 border-dashed border-muted-foreground/30 flex items-center justify-center">
+                    <ImageIcon className="h-6 w-6 text-muted-foreground/50" />
+                  </div>
+                )}
+                <div>
+                  <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleImageUpload} />
+                  <Button type="button" variant="outline" size="sm" disabled={uploading} onClick={() => fileInputRef.current?.click()} className="gap-1">
+                    <Upload className="h-3.5 w-3.5" /> {uploading ? 'Uploading...' : 'Upload'}
+                  </Button>
+                  <p className="text-[10px] text-muted-foreground mt-1">Max 5MB · JPG, PNG, WebP</p>
+                </div>
+              </div>
             </div>
           </div>
           <DialogFooter>

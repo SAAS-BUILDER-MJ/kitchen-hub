@@ -15,7 +15,7 @@ export interface CartItem {
 }
 
 interface AuthState {
-  role: 'chef' | 'admin' | null;
+  role: 'chef' | 'admin' | 'waiter' | null;
   isAuthenticated: boolean;
   userId: string | null;
   userRestaurantId: string | null;
@@ -119,7 +119,7 @@ export const useStore = create<AppStore>()(
           .select('role, restaurant_id')
           .eq('user_id', data.user.id);
 
-        const role = roles?.[0]?.role as 'chef' | 'admin' | null;
+        const role = roles?.[0]?.role as 'chef' | 'admin' | 'waiter' | null;
         if (!role) {
           await supabase.auth.signOut();
           return false;
@@ -147,7 +147,7 @@ export const useStore = create<AppStore>()(
             .select('role, restaurant_id')
             .eq('user_id', session.user.id);
 
-          const role = roles?.[0]?.role as 'chef' | 'admin' | null;
+          const role = roles?.[0]?.role as 'chef' | 'admin' | 'waiter' | null;
           const userRestaurantId = (roles?.[0] as any)?.restaurant_id || null;
           set({ auth: { role, isAuthenticated: true, userId: session.user.id, userRestaurantId }, authLoading: false });
         } catch (err) {
@@ -169,7 +169,7 @@ export const useStore = create<AppStore>()(
               .select('role, restaurant_id')
               .eq('user_id', session.user.id)
               .then(({ data: roles }) => {
-                const role = roles?.[0]?.role as 'chef' | 'admin' | null;
+                const role = roles?.[0]?.role as 'chef' | 'admin' | 'waiter' | null;
                 const userRestaurantId = (roles?.[0] as any)?.restaurant_id || null;
                 set({ auth: { role, isAuthenticated: true, userId: session.user.id, userRestaurantId }, authLoading: false });
               });

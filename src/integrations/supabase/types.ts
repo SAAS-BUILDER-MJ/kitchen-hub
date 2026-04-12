@@ -376,7 +376,7 @@ export type Database = {
       rotate_qr_code: { Args: { _table_id: string }; Returns: string }
     }
     Enums: {
-      app_role: "admin" | "chef" | "user"
+      app_role: "admin" | "chef" | "user" | "waiter"
       order_status: "NEW" | "PREPARING" | "READY" | "SERVED" | "CANCELLED"
     }
     CompositeTypes: {
@@ -505,7 +505,7 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
-      app_role: ["admin", "chef", "user"],
+      app_role: ["admin", "chef", "user", "waiter"],
       order_status: ["NEW", "PREPARING", "READY", "SERVED", "CANCELLED"],
     },
   },

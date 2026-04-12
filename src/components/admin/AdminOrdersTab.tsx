@@ -1,11 +1,11 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect, useCallback } from 'react';
 import { format } from 'date-fns';
-import { Search, Download, ArrowUpDown } from 'lucide-react';
+import { Search, Download, ArrowUpDown, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { OrderStatus } from '@/store/useStore';
-import { DbOrder } from '@/lib/supabase-api';
+import { fetchOrders, DbOrder } from '@/lib/supabase-api';
 
 const statusColors: Record<string, string> = {
   NEW: 'bg-warning/10 text-warning border-warning/30',
@@ -16,15 +16,44 @@ const statusColors: Record<string, string> = {
 };
 
 const statusOptions: (OrderStatus | 'ALL')[] = ['ALL', 'NEW', 'PREPARING', 'READY', 'SERVED', 'CANCELLED'];
+const PAGE_SIZE = 50;
 
 interface Props {
-  orders: DbOrder[];
+  restaurantId: string;
+  dateFrom: string;
+  dateTo: string;
 }
 
-export default function AdminOrdersTab({ orders }: Props) {
+export default function AdminOrdersTab({ restaurantId, dateFrom, dateTo }: Props) {
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<OrderStatus | 'ALL'>('ALL');
-  const [sortNewestFirst, setSortNewestFirst] = useState(false);
+  const [sortNewestFirst, setSortNewestFirst] = useState(true);
+  const [orders, setOrders] = useState<DbOrder[]>([]);
+  const [page, setPage] = useState(0);
+  const [loading, setLoading] = useState(true);
+  const [hasMore, setHasMore] = useState(true);
+
+  const loadPage = useCallback(async (pageNum: number) => {
+    setLoading(true);
+    try {
+      const data = await fetchOrders(restaurantId, {
+        from: dateFrom,
+        to: dateTo,
+        limit: PAGE_SIZE,
+        offset: pageNum * PAGE_SIZE,
+      });
+      setOrders(data);
+      setHasMore(data.length === PAGE_SIZE);
+      setPage(pageNum);
+    } catch {
+    } finally {
+      setLoading(false);
+    }
+  }, [restaurantId, dateFrom, dateTo]);
+
+  useEffect(() => {
+    loadPage(0);
+  }, [loadPage]);
 
   const filtered = useMemo(() => {
     let result = orders;
@@ -98,7 +127,9 @@ export default function AdminOrdersTab({ orders }: Props) {
       </div>
 
       <div className="flex items-center justify-between">
-        <span className="text-sm text-muted-foreground">{filtered.length} orders</span>
+        <span className="text-sm text-muted-foreground">
+          {loading ? 'Loading...' : `${filtered.length} orders (page ${page + 1})`}
+        </span>
         <div className="flex gap-2">
           <Button size="sm" variant="outline" onClick={() => setSortNewestFirst(!sortNewestFirst)} className="text-xs gap-1">
             <ArrowUpDown className="h-3.5 w-3.5" />
@@ -111,7 +142,7 @@ export default function AdminOrdersTab({ orders }: Props) {
         </div>
       </div>
 
-      {filtered.length === 0 ? (
+      {filtered.length === 0 && !loading ? (
         <p className="text-center py-12 text-muted-foreground">No orders found</p>
       ) : (
         filtered.map((order) => (
@@ -143,6 +174,29 @@ export default function AdminOrdersTab({ orders }: Props) {
           </div>
         ))
       )}
+
+      {/* Pagination */}
+      <div className="flex items-center justify-center gap-3 pt-2">
+        <Button
+          size="sm"
+          variant="outline"
+          disabled={page === 0 || loading}
+          onClick={() => loadPage(page - 1)}
+          className="gap-1"
+        >
+          <ChevronLeft className="h-4 w-4" /> Previous
+        </Button>
+        <span className="text-sm text-muted-foreground">Page {page + 1}</span>
+        <Button
+          size="sm"
+          variant="outline"
+          disabled={!hasMore || loading}
+          onClick={() => loadPage(page + 1)}
+          className="gap-1"
+        >
+          Next <ChevronRight className="h-4 w-4" />
+        </Button>
+      </div>
     </div>
   );
 }

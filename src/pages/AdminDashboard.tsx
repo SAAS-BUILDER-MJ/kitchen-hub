@@ -4,7 +4,7 @@ import {
   fetchMenuItems, fetchCategories, fetchOrders,
   DbMenuItem, DbOrder,
 } from '@/lib/supabase-api';
-import { LogOut, LayoutDashboard, QrCode, Table2 } from 'lucide-react';
+import { LogOut, LayoutDashboard, QrCode, Table2, Settings } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import AdminDateFilter, { DateRange, getDateRange } from '@/components/admin/AdminDateFilter';
 import AdminOverviewTab from '@/components/admin/AdminOverviewTab';
@@ -13,11 +13,12 @@ import AdminMenuTab from '@/components/admin/AdminMenuTab';
 import AdminQrTab from '@/components/admin/AdminQrTab';
 import AdminTablesTab from '@/components/admin/AdminTablesTab';
 import AdminStaffTab from '@/components/admin/AdminStaffTab';
+import AdminSettingsTab from '@/components/admin/AdminSettingsTab';
 
 const AdminDashboard = () => {
   const { logout, auth } = useStore();
   const restaurantId = auth.userRestaurantId || '';
-  const [tab, setTab] = useState<'overview' | 'orders' | 'menu' | 'tables' | 'qr' | 'staff'>('overview');
+  const [tab, setTab] = useState<'overview' | 'orders' | 'menu' | 'tables' | 'qr' | 'staff' | 'settings'>('overview');
   const [menuItems, setMenuItems] = useState<DbMenuItem[]>([]);
   const [categories, setCategories] = useState<{ id: string; name: string }[]>([]);
   const [allOrders, setAllOrders] = useState<DbOrder[]>([]);
@@ -65,7 +66,7 @@ const AdminDashboard = () => {
       <div className="max-w-5xl mx-auto px-4 py-3 space-y-3">
         {/* Tab switcher */}
         <div className="flex gap-2 overflow-x-auto">
-          {(['overview', 'orders', 'menu', 'tables', 'qr', 'staff'] as const).map((t) => (
+          {(['overview', 'orders', 'menu', 'tables', 'qr', 'staff', 'settings'] as const).map((t) => (
             <button
               key={t}
               onClick={() => setTab(t)}
@@ -75,6 +76,7 @@ const AdminDashboard = () => {
             >
               {t === 'qr' && <QrCode className="h-3.5 w-3.5" />}
               {t === 'tables' && <Table2 className="h-3.5 w-3.5" />}
+              {t === 'settings' && <Settings className="h-3.5 w-3.5" />}
               {t === 'qr' ? 'QR Codes' : t}
             </button>
           ))}
@@ -95,7 +97,13 @@ const AdminDashboard = () => {
             availableCount={menuItems.filter((m) => m.available).length}
           />
         )}
-        {tab === 'orders' && <AdminOrdersTab orders={filteredOrders} />}
+        {tab === 'orders' && (
+          <AdminOrdersTab
+            restaurantId={restaurantId}
+            dateFrom={dateRange.from.toISOString()}
+            dateTo={dateRange.to.toISOString()}
+          />
+        )}
         {tab === 'menu' && (
           <AdminMenuTab
             menuItems={menuItems}
@@ -108,6 +116,7 @@ const AdminDashboard = () => {
         {tab === 'tables' && <AdminTablesTab restaurantId={restaurantId} />}
         {tab === 'qr' && <AdminQrTab restaurantId={restaurantId} />}
         {tab === 'staff' && <AdminStaffTab restaurantId={restaurantId} />}
+        {tab === 'settings' && <AdminSettingsTab restaurantId={restaurantId} />}
       </div>
     </div>
   );

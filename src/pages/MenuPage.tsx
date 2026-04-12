@@ -167,7 +167,11 @@ const MenuItemCard = ({
   item: DbMenuItem; quantity: number; onAdd: () => void; onRemove: () => void;
 }) => (
   <div className={`flex items-center gap-4 p-4 bg-card rounded-lg border shadow-sm animate-slide-up ${!item.available ? 'opacity-50' : ''}`}>
-    <span className="text-4xl">{item.emoji || '🍽️'}</span>
+    {item.image_url ? (
+      <img src={item.image_url} alt={item.name} className="w-14 h-14 rounded-lg object-cover shrink-0" loading="lazy" />
+    ) : (
+      <span className="text-4xl">{item.emoji || '🍽️'}</span>
+    )}
     <div className="flex-1 min-w-0">
       <div className="flex items-center gap-2">
         <h3 className="font-semibold text-sm">{item.name}</h3>

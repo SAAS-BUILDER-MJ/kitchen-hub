@@ -3,7 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 export interface StaffMember {
   id: string;
   user_id: string;
-  role: 'admin' | 'chef';
+  role: 'admin' | 'chef' | 'waiter';
   restaurant_id: string;
   created_at: string;
   email?: string;
@@ -16,7 +16,7 @@ export async function fetchStaff(restaurantId: string): Promise<StaffMember[]> {
     .from('user_roles')
     .select('*')
     .eq('restaurant_id', restaurantId)
-    .in('role', ['admin', 'chef']);
+    .in('role', ['admin', 'chef', 'waiter']);
   if (error) throw error;
   return (data || []) as StaffMember[];
 }

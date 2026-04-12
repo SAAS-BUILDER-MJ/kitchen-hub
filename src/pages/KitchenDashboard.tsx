@@ -2,7 +2,8 @@ import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useStore, OrderStatus } from '@/store/useStore';
 import { fetchOrders, updateOrderStatus, cancelOrder, DbOrder } from '@/lib/supabase-api';
 import { subscribeToOrdersWithReconnect } from '@/lib/realtime';
-import { LogOut, ChefHat, Clock, CheckCircle2, BellRing, UtensilsCrossed, Layers, XCircle, WifiOff, Wifi } from 'lucide-react';
+import { requestNotificationPermission, notifyOrderStatusChange, getNotificationPermission } from '@/lib/notifications';
+import { LogOut, ChefHat, Clock, CheckCircle2, BellRing, UtensilsCrossed, Layers, XCircle, WifiOff, Wifi, Bell } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
@@ -68,6 +69,7 @@ const KitchenDashboard = () => {
   const [cancellingId, setCancellingId] = useState<string | null>(null);
   const [modifiedOrderIds, setModifiedOrderIds] = useState<Set<string>>(new Set());
   const [connectionStatus, setConnectionStatus] = useState<'connected' | 'disconnected' | 'reconnecting'>('connected');
+  const [notifPermission, setNotifPermission] = useState(getNotificationPermission());
   const prevOrderCount = useRef(0);
   const orderFingerprintsRef = useRef<Map<string, string>>(new Map());
   const ordersRef = useRef<DbOrder[]>([]);
@@ -148,6 +150,7 @@ const KitchenDashboard = () => {
               // Notification
               toast.info(`🔔 New order received! Table ${fullOrder.table_number}`, { duration: 5000 });
               playNotificationSound(800, 1000);
+              notifyOrderStatusChange(fullOrder.table_number, 'NEW', fullOrder.id);
             }).catch(() => {
               // Fallback: full reload
               loadOrders();
@@ -356,6 +359,22 @@ const KitchenDashboard = () => {
                 </Badge>
               )}
             </Button>
+            {notifPermission !== 'granted' && notifPermission !== 'unsupported' && (
+              <Button
+                variant="outline"
+                size="sm"
+                className="gap-1"
+                onClick={async () => {
+                  const result = await requestNotificationPermission();
+                  setNotifPermission(result);
+                  if (result === 'granted') toast.success('Notifications enabled');
+                  else if (result === 'denied') toast.error('Notifications blocked by browser');
+                }}
+              >
+                <Bell className="h-4 w-4" />
+                <span className="hidden sm:inline">Notifications</span>
+              </Button>
+            )}
             <Button variant="ghost" size="sm" onClick={() => logout()}>
               <LogOut className="h-4 w-4 mr-1" /> Logout
             </Button>

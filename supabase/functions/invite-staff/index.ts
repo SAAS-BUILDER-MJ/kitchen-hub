@@ -48,8 +48,8 @@ Deno.serve(async (req) => {
         status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
-    if (role !== "chef") {
-      return new Response(JSON.stringify({ error: "Only 'chef' role can be invited" }), {
+    if (role !== "chef" && role !== "waiter") {
+      return new Response(JSON.stringify({ error: "Only 'chef' or 'waiter' roles can be invited" }), {
         status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
@@ -105,7 +105,7 @@ Deno.serve(async (req) => {
       .from("user_roles")
       .insert({
         user_id: targetUser.id,
-        role: "chef",
+        role: role,
         restaurant_id: restaurant_id,
       });
 
@@ -115,7 +115,7 @@ Deno.serve(async (req) => {
       });
     }
 
-    return new Response(JSON.stringify({ success: true, message: `${email} has been added as chef` }), {
+    return new Response(JSON.stringify({ success: true, message: `${email} has been added as ${role}` }), {
       status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (err) {

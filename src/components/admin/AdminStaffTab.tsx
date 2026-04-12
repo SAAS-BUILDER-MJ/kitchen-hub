@@ -3,7 +3,7 @@ import { useStore } from '@/store/useStore';
 import { fetchStaff, removeStaff, StaffMember } from '@/lib/staff-api';
 import { supabase } from '@/integrations/supabase/client';
 import { sanitizeField } from '@/lib/sanitize';
-import { UserPlus, Trash2, X, Shield, ChefHat, Mail } from 'lucide-react';
+import { UserPlus, Trash2, X, Shield, ChefHat, Mail, UtensilsCrossed } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -21,7 +21,7 @@ export default function AdminStaffTab({ restaurantId }: Props) {
   const [loading, setLoading] = useState(true);
   const [inviteOpen, setInviteOpen] = useState(false);
   const [inviteEmail, setInviteEmail] = useState('');
-  const [inviteRole, setInviteRole] = useState<'chef'>('chef');
+  const [inviteRole, setInviteRole] = useState<'chef' | 'waiter'>('chef');
   const [inviting, setInviting] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
 
@@ -104,6 +104,8 @@ export default function AdminStaffTab({ restaurantId }: Props) {
                 <div className="h-9 w-9 rounded-full bg-primary/10 flex items-center justify-center">
                   {member.role === 'admin' ? (
                     <Shield className="h-4 w-4 text-primary" />
+                  ) : member.role === 'waiter' ? (
+                    <UtensilsCrossed className="h-4 w-4 text-primary" />
                   ) : (
                     <ChefHat className="h-4 w-4 text-primary" />
                   )}
@@ -164,10 +166,11 @@ export default function AdminStaffTab({ restaurantId }: Props) {
             </div>
             <div>
               <label className="text-sm font-medium text-foreground">Role</label>
-              <Select value={inviteRole} onValueChange={(v) => setInviteRole(v as 'chef')}>
+              <Select value={inviteRole} onValueChange={(v) => setInviteRole(v as 'chef' | 'waiter')}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="chef">Chef (Kitchen Access)</SelectItem>
+                  <SelectItem value="waiter">Waiter (Table Service)</SelectItem>
                 </SelectContent>
               </Select>
             </div>

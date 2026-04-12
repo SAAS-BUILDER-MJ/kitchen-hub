@@ -62,6 +62,7 @@ export async function createMenuItem(item: {
   emoji: string;
   category_id: string;
   restaurant_id: string;
+  image_url?: string | null;
 }) {
   if (!item.restaurant_id) throw new Error('restaurant_id is required');
   const { data, error } = await supabase
@@ -82,6 +83,7 @@ export async function updateMenuItem(id: string, updates: Partial<{
   category_id: string;
   is_deleted: boolean;
   deleted_at: string | null;
+  image_url: string | null;
 }>) {
   const { error } = await supabase
     .from('menu_items')

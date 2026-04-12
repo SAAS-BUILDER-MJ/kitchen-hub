@@ -97,7 +97,13 @@ const AdminDashboard = () => {
             availableCount={menuItems.filter((m) => m.available).length}
           />
         )}
-        {tab === 'orders' && <AdminOrdersTab orders={filteredOrders} />}
+        {tab === 'orders' && (
+          <AdminOrdersTab
+            restaurantId={restaurantId}
+            dateFrom={dateRange.from.toISOString()}
+            dateTo={dateRange.to.toISOString()}
+          />
+        )}
         {tab === 'menu' && (
           <AdminMenuTab
             menuItems={menuItems}

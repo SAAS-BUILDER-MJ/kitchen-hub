@@ -1,6 +1,7 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { sanitizeField } from '@/lib/sanitize';
-import { Plus, Pencil, Trash2, X, Save } from 'lucide-react';
+import { uploadMenuImage, deleteMenuImage } from '@/lib/image-upload';
+import { Plus, Pencil, Trash2, X, Save, Upload, ImageIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
@@ -15,7 +16,7 @@ import {
   deleteMenuItem as deleteMenuItemApi,
 } from '@/lib/supabase-api';
 
-const emptyForm = { name: '', price: 0, category_id: '', description: '', emoji: '🍽️' };
+const emptyForm = { name: '', price: 0, category_id: '', description: '', emoji: '🍽️', image_url: '' };
 
 interface Props {
   menuItems: DbMenuItem[];
@@ -30,6 +31,8 @@ export default function AdminMenuTab({ menuItems, categories, onReload, setMenuI
   const [editingItem, setEditingItem] = useState<DbMenuItem | null>(null);
   const [form, setForm] = useState(emptyForm);
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
+  const [uploading, setUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Only show non-deleted items in admin menu management
   const visibleItems = menuItems.filter((m) => !m.is_deleted);
@@ -43,8 +46,31 @@ export default function AdminMenuTab({ menuItems, categories, onReload, setMenuI
 
   const openEdit = (item: DbMenuItem) => {
     setEditingItem(item);
-    setForm({ name: item.name, price: item.price, category_id: item.category_id, description: item.description || '', emoji: item.emoji || '🍽️' });
+    setForm({ name: item.name, price: item.price, category_id: item.category_id, description: item.description || '', emoji: item.emoji || '🍽️', image_url: item.image_url || '' });
     setDialogOpen(true);
+  };
+
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error('Image must be under 5MB');
+      return;
+    }
+    if (!file.type.startsWith('image/')) {
+      toast.error('Please select an image file');
+      return;
+    }
+    setUploading(true);
+    try {
+      const url = await uploadMenuImage(restaurantId, file);
+      setForm((prev) => ({ ...prev, image_url: url }));
+      toast.success('Image uploaded');
+    } catch {
+      toast.error('Failed to upload image');
+    } finally {
+      setUploading(false);
+    }
   };
 
   const handleSave = async () => {
@@ -57,10 +83,10 @@ export default function AdminMenuTab({ menuItems, categories, onReload, setMenuI
     }
     try {
       if (editingItem) {
-        await updateMenuItemApi(editingItem.id, { name: cleanName, price: form.price, description: cleanDesc, emoji: cleanEmoji, category_id: form.category_id });
+        await updateMenuItemApi(editingItem.id, { name: cleanName, price: form.price, description: cleanDesc, emoji: cleanEmoji, category_id: form.category_id, image_url: form.image_url || null });
         toast.success(`"${form.name}" updated`);
       } else {
-        await createMenuItem({ name: cleanName, price: form.price, description: cleanDesc, emoji: cleanEmoji, category_id: form.category_id, restaurant_id: restaurantId });
+        await createMenuItem({ name: cleanName, price: form.price, description: cleanDesc, emoji: cleanEmoji, category_id: form.category_id, restaurant_id: restaurantId, image_url: form.image_url || null });
         toast.success(`"${cleanName}" added to menu`);
       }
       setDialogOpen(false);
